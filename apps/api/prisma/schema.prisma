@@ -1,0 +1,171 @@
+                                                                                generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STAFF
+  ATTENDEE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  ENDED
+  CANCELLED
+}
+
+enum TicketStatus {
+  ACTIVE
+  USED
+  CANCELLED
+  TRANSFERRED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          Role           @default(ATTENDEE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tickets       Ticket[]
+  events        Event[]        @relation("organizer")
+  checkIns      CheckInLog[]   @relation("staff")
+  refreshTokens RefreshToken[]
+}
+
+model Event {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  organizerId String
+  organizer   User         @relation("organizer", fields: [organizerId], references: [id])
+  venueId     String
+  venue       Venue        @relation(fields: [venueId], references: [id])
+  startsAt    DateTime
+  endsAt      DateTime
+  status      EventStatus  @default(DRAFT)
+  bannerUrl   String?
+  deletedAt   DateTime?
+  ticketTypes TicketType[]
+  tickets     Ticket[]
+  allocations Allocation[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([organizerId])
+  @@index([startsAt])
+  @@index([status])
+}
+
+model Venue {
+  id            String   @id @default(uuid())
+  name          String
+  address       String
+  city          String
+  totalCapacity Int
+  layoutJson    Json
+  events        Event[]
+  seats         Seat[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Seat {
+  id           String   @id @default(uuid())
+  venueId      String
+  venue        Venue    @relation(fields: [venueId], references: [id])
+  rowLabel     String
+  seatNumber   String
+  section      String?
+  xCoord       Float
+  yCoord       Float
+  isAccessible Boolean  @default(false)
+  tickets      Ticket[]
+
+  @@unique([venueId, rowLabel, seatNumber])
+  @@index([venueId])
+}
+
+model TicketType {
+  id            String   @id @default(uuid())
+  eventId       String
+  event         Event    @relation(fields: [eventId], references: [id])
+  name          String
+  price         Decimal  @db.Decimal(10, 2)
+  quantityTotal Int
+  quantitySold  Int      @default(0)
+  description   String?
+  tickets       Ticket[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Ticket {
+  id           String       @id @default(uuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  eventId      String
+  event        Event        @relation(fields: [eventId], references: [id])
+  ticketTypeId String
+  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id])
+  seatId       String?
+  seat         Seat?        @relation(fields: [seatId], references: [id])
+  qrToken      String       @unique
+  status       TicketStatus @default(ACTIVE)
+  checkInAt    DateTime?
+  issuedAt     DateTime     @default(now())
+  deletedAt    DateTime?
+  checkInLogs  CheckInLog[]
+
+  @@unique([eventId, seatId])
+  @@index([userId, eventId])
+  @@index([qrToken])
+}
+
+model Allocation {
+  id              String   @id @default(uuid())
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id])
+  algorithmUsed   String
+  utilizationRate Float
+  runAt           DateTime @default(now())
+  seatMapJson     Json
+}
+
+model CheckInLog {
+  id          String   @id @default(uuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id])
+  staffUserId String
+  staff       User     @relation("staff", fields: [staffUserId], references: [id])
+  scannedAt   DateTime @default(now())
+  result      String
+  deviceInfo  String?
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  deviceInfo String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
