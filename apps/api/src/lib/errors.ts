@@ -62,4 +62,22 @@ export const Errors = {
 
   eventNotDeletable: () =>
     new AppError('EVENT_NOT_DELETABLE', 403, 'Only draft or cancelled events can be deleted'),
+
+  eventNotAllocatable: () =>
+    new AppError('EVENT_NOT_ALLOCATABLE', 409, 'Event must be PUBLISHED or ONGOING to run allocation'),
+
+  noSeatsAvailable: () =>
+    new AppError('NO_SEATS_AVAILABLE', 409, 'No tickets remaining for this type'),
+
+  ticketNotTransferable: () =>
+    new AppError('TICKET_NOT_TRANSFERABLE', 409, 'Only active tickets can be transferred'),
+
+  transferTargetNotFound: () =>
+    new AppError('TRANSFER_TARGET_NOT_FOUND', 404, 'No account found with that email address'),
+
+  transferTargetHasTicket: () =>
+    new AppError('TRANSFER_TARGET_HAS_TICKET', 409, 'That user already has a ticket for this event'),
+
+  ticketNotActive: () =>
+    new AppError('TICKET_NOT_ACTIVE', 409, 'Only active tickets can be manually checked in'),
 } as const;
