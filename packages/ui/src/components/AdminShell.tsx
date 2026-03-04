@@ -31,22 +31,22 @@ export function AdminShell({
   onLogout,
   children,
 }: AdminShellProps) {
-  const initials = user.name ? user.name.charAt(0).toUpperCase() : '?';
+
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
+      {/* ── Sidebar  */}
+      <aside className="h-screen w-64 shrink-0 flex flex-col justify-between bg-white border-r border-gray-200">
         {/* Logo */}
-        <div className="px-6 py-5 border-b border-gray-200 flex items-baseline gap-2">
+        <div className="px-6 py-5 border-b text-center border-gray-200 flex flex-col ml-10 items-baseline gap-2">
           <span className="text-lg font-bold text-indigo-600">EventFlow</span>
           {title && (
-            <span className="text-xs text-gray-400 font-normal">{title}</span>
+            <span className="text-xs  text-gray-400 font-normal">{title}</span>
           )}
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 flex flex-col justify-center px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => (
             <a
               key={item.href}
@@ -68,11 +68,9 @@ export function AdminShell({
         </nav>
 
         {/* User footer */}
-        <div className="px-3 py-4 border-t border-gray-200 space-y-2">
-          <div className="flex items-center gap-3 px-3">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-sm font-semibold flex-shrink-0">
-              {initials}
-            </div>
+        <div className="px-3 py-4 border-t border-gray-200 space-y-4">
+          <div className="flex flex-col items-center gap-3 px-3">
+            
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
@@ -80,15 +78,15 @@ export function AdminShell({
           </div>
           <button
             onClick={onLogout}
-            className="w-full text-left text-sm text-gray-500 hover:text-red-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
+            className="w-full border border-indigo-500 text-center text-sm text-gray-500 hover:text-red-600 transition-colors py-2 rounded-lg hover:bg-red-50"
           >
             Sign out
           </button>
         </div>
       </aside>
 
-      {/* ── Main content ────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* ── Main content */}
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
