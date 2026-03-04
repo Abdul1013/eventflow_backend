@@ -2,7 +2,8 @@
 
 export type Role = 'ADMIN' | 'STAFF' | 'ATTENDEE';
 export type EventStatus = 'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'ENDED' | 'CANCELLED';
-export type TicketStatus = 'ACTIVE' | 'USED' | 'CANCELLED' | 'TRANSFERRED';
+import type { TicketStatus } from './ticket.types.js';
+export type { TicketStatus };
 
 export interface ApiSuccess<T> {
   success: true;
@@ -56,16 +57,38 @@ export interface TicketDto {
   seat?: { rowLabel: string; seatNumber: string; section?: string };
 }
 
-export interface CheckinResult {
-  result: 'VALID' | 'ALREADY_USED' | 'INVALID_TOKEN' | 'EVENT_NOT_ACTIVE' | 'TICKET_CANCELLED';
-  ticketId?: string;
-}
-
-export interface CheckinStats {
-  total: number;
-  checked: number;
-  remaining: number;
-}
+// ─── Check-in types ───────────────────────────────────────────────────────────
+export type {
+  ScanResultCode,
+  ScanResult,
+  RecentScan,
+  CheckInStats,
+  QueuedScan,
+} from './checkin.types.js';
 
 // ─── Auth types ───────────────────────────────────────────────────────────────
 export type { AuthTokens, JwtPayload, AuthUser, LoginResponseData } from './auth.types.js';
+
+// ─── API envelope types ───────────────────────────────────────────────────────
+export type { PaginationMeta, ApiEnvelope, PaginatedResponse } from './api.types.js';
+
+// ─── Event / admin types ──────────────────────────────────────────────────────
+export type {
+  EventRow,
+  AdminStats,
+  VenueSummary,
+  TicketTypeAggregate,
+  AdminEventListItem,
+  EventDetail,
+} from './event.types.js';
+
+// ─── Ticket types ─────────────────────────────────────────────────────────────
+export type {
+  TicketSeat,
+  TicketEvent,
+  Ticket,
+  TicketDetail,
+  PurchaseTicketDto,
+  TransferTicketDto,
+  TicketTransferResult,
+} from './ticket.types.js';
