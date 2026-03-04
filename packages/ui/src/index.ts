@@ -9,3 +9,6 @@ export { AttendeeShell } from './components/AttendeeShell';
 export type { AttendeeShellProps, AttendeeNavItem } from './components/AttendeeShell';
 export { NotFoundPage } from './components/NotFoundPage';
 export type { NotFoundPageProps } from './components/NotFoundPage';
+export { StatusBadge } from './components/StatusBadge';
+export { StepIndicator } from './components/StepIndicator';
+export type { StepIndicatorProps } from './components/StepIndicator';
