@@ -54,8 +54,17 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
+          <div className="mb-8 text-center">
+            <div className="inline-flex items-center gap-2.5 mb-5">
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="36" height="36" rx="9" fill="#4F46E5" />
+                <path d="M9 11h12M9 18h8M9 25h12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+                <circle cx="26" cy="23" r="6" fill="#06B6D4" />
+                <path d="M23.5 23l2 2 3-3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-2xl font-bold text-gray-900 tracking-tight">EventFlow</span>
+            </div>
+            <h1 className="text-xl font-semibold text-gray-800">Create your account</h1>
             <p className="mt-1 text-sm text-gray-500">
               Already have an account?{' '}
               <Link to="/login" className="text-primary font-medium hover:underline">
