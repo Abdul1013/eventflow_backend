@@ -62,3 +62,9 @@ ios/
 *.p12
 *.keystore
 *.mobileprovision
+
+# Load test generated artifacts — reports and seed fixtures contain secrets
+apps/api/tests/load/results/*.html
+apps/api/tests/load/results/*.txt
+apps/api/tests/load/fixtures/tokens.json
+apps/api/tests/load/fixtures/event_info.json
