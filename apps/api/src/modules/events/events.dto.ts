@@ -3,7 +3,7 @@ import { z } from 'zod';
 const createEventBase = z.object({
   title: z.string().min(3).max(200),
   description: z.string().min(10),
-  venueId: z.string().uuid(),
+  venueId: z.string().trim().uuid(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
   bannerUrl: z.string().url().optional(),

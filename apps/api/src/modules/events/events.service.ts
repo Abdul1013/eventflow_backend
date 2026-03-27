@@ -1,9 +1,11 @@
 import type { Prisma, EventStatus } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { Errors } from '../../lib/errors.js';
+import { uploadEventBanner } from '../../lib/upload.js';
+import { saoClient, type SaoSeat, type SaoAttendee } from '../../lib/saoClient.js';
 import type { CreateEventDto, UpdateEventDto, ListEventsQuery } from './events.dto.js';
 
-// ─── Status transition table ──────────────────────────────────────────────────
+// ─── Status transition table ─
 
 const TRANSITIONS: Record<EventStatus, EventStatus[]> = {
   DRAFT:     ['PUBLISHED'],
@@ -13,13 +15,12 @@ const TRANSITIONS: Record<EventStatus, EventStatus[]> = {
   CANCELLED: [],
 };
 
-// ─── Queries ──────────────────────────────────────────────────────────────────
+// ─── Queries 
 
 export const listEvents = async (query: ListEventsQuery, isAdmin = false) => {
   const { page, limit, search, status, sort, venueId } = query;
   const skip = (page - 1) * limit;
 
-  // Non-admins always see only PUBLISHED events, regardless of query param
   const effectiveStatus: EventStatus | undefined = isAdmin ? status : 'PUBLISHED';
 
   const where: Prisma.EventWhereInput = {
@@ -51,6 +52,7 @@ export const listEvents = async (query: ListEventsQuery, isAdmin = false) => {
         status: true,
         bannerUrl: true,
         venue: { select: { id: true, name: true, city: true } },
+        ticketTypes: { select: { quantityTotal: true, quantitySold: true } },
       },
     }),
     prisma.event.count({ where }),
@@ -72,7 +74,7 @@ export const getEventById = async (id: string) => {
   return event;
 };
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
+// ─── Mutations 
 
 export const createEvent = async (organizerId: string, dto: CreateEventDto) => {
   const { ticketTypes, ...eventData } = dto;
@@ -108,7 +110,6 @@ export const updateEvent = async (id: string, dto: UpdateEventDto) => {
   if (!event) throw Errors.notFound('Event');
   if (event.status !== 'DRAFT') throw Errors.eventNotEditable();
 
-  // Strip undefined values — Prisma with exactOptionalPropertyTypes rejects them
   const data = Object.fromEntries(
     Object.entries(dto)
       .filter(([, v]) => v !== undefined)
@@ -141,4 +142,189 @@ export const softDeleteEvent = async (id: string) => {
     throw Errors.eventNotDeletable();
   }
   return prisma.event.update({ where: { id }, data: { deletedAt: new Date() } });
+};
+
+export const uploadBanner = async (id: string, fileBuffer: Buffer): Promise<string> => {
+  const event = await prisma.event.findFirst({ where: { id, deletedAt: null } });
+  if (!event) throw Errors.notFound('Event');
+  const bannerUrl = await uploadEventBanner(fileBuffer);
+  await prisma.event.update({ where: { id }, data: { bannerUrl } });
+  return bannerUrl;
+};
+
+// ─── Seat map 
+
+type SeatStatus = 'AVAILABLE' | 'ALLOCATED' | 'CHECKED_IN';
+
+export const getEventSeats = async (eventId: string) => {
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, deletedAt: null },
+    include: { venue: { include: { seats: true } } },
+  });
+  if (!event) throw Errors.notFound('Event');
+
+  // Fetch all ACTIVE + USED tickets that have a seat assigned
+  const tickets = await prisma.ticket.findMany({
+    where: { eventId, status: { in: ['ACTIVE', 'USED'] }, seatId: { not: null }, deletedAt: null },
+    select: { seatId: true, status: true },
+  });
+
+  // Build seatId → SeatStatus lookup
+  const seatStatusMap = new Map<string, SeatStatus>();
+  for (const t of tickets) {
+    if (t.seatId) {
+      seatStatusMap.set(t.seatId, t.status === 'USED' ? 'CHECKED_IN' : 'ALLOCATED');
+    }
+  }
+
+  return {
+    eventId,
+    seats: event.venue.seats.map((s) => ({
+      id:           s.id,
+      rowLabel:     s.rowLabel,
+      seatNumber:   s.seatNumber,
+      section:      s.section,
+      xCoord:       s.xCoord,
+      yCoord:       s.yCoord,
+      isAccessible: s.isAccessible,
+      status:       (seatStatusMap.get(s.id) ?? 'AVAILABLE') as SeatStatus,
+    })),
+  };
+};
+
+// ─── SAO allocation 
+
+export const getAllocations = async (eventId: string) => {
+  const event = await prisma.event.findFirst({ where: { id: eventId, deletedAt: null } });
+  if (!event) throw Errors.notFound('Event');
+
+  const allocations = await prisma.allocation.findMany({
+    where: { eventId },
+    orderBy: { runAt: 'desc' },
+  });
+
+  return allocations.map((a) => ({
+    id:             a.id,
+    algorithmUsed:  a.algorithmUsed,
+    utilizationRate: a.utilizationRate,
+    runAt:          a.runAt,
+    seatsAssigned:  Array.isArray(a.seatMapJson) ? (a.seatMapJson as unknown[]).length : 0,
+    seatMapJson:    a.seatMapJson,
+  }));
+};
+
+export const runAllocationComparison = async (eventId: string) => {
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, deletedAt: null },
+    include: {
+      venue: { include: { seats: true } },
+      tickets: {
+        where: { status: 'ACTIVE', deletedAt: null },
+        select: { id: true, userId: true },
+      },
+    },
+  });
+
+  if (!event) throw Errors.notFound('Event');
+  if (event.status !== 'PUBLISHED' && event.status !== 'ONGOING') {
+    throw Errors.eventNotAllocatable();
+  }
+
+  const seats: SaoSeat[] = event.venue.seats.map((s) => ({
+    id:           s.id,
+    rowLabel:     s.rowLabel,
+    seatNumber:   s.seatNumber,
+    section:      s.section ?? null,
+    xCoord:       s.xCoord,
+    yCoord:       s.yCoord,
+    isAccessible: s.isAccessible,
+  }));
+
+  const attendees: SaoAttendee[] = event.tickets.map((t) => ({
+    userId:          t.userId,
+    ticketId:        t.id,
+    groupSize:       1,
+    needsAccessible: false,
+  }));
+
+  const comparison = await saoClient.compare({ eventId, seats, attendees });
+
+  // Store one Allocation audit record per algorithm so history is preserved
+  await prisma.$transaction([
+    prisma.allocation.create({
+      data: {
+        eventId,
+        algorithmUsed:  'kmeans_greedy',
+        utilizationRate: comparison.saoUtilizationRate,
+        seatMapJson:    [] as unknown as Prisma.InputJsonArray,
+      },
+    }),
+    prisma.allocation.create({
+      data: {
+        eventId,
+        algorithmUsed:  'manual_baseline',
+        utilizationRate: comparison.baselineUtilizationRate,
+        seatMapJson:    [] as unknown as Prisma.InputJsonArray,
+      },
+    }),
+  ]);
+
+  return { ...comparison, eventTitle: event.title };
+};
+
+export const runAllocation = async (eventId: string) => {
+  const event = await prisma.event.findFirst({
+    where: { id: eventId, deletedAt: null },
+    include: {
+      venue: { include: { seats: true } },
+      tickets: {
+        where: { status: 'ACTIVE', deletedAt: null },
+        select: { id: true, userId: true },
+      },
+    },
+  });
+
+  if (!event) throw Errors.notFound('Event');
+  if (event.status !== 'PUBLISHED' && event.status !== 'ONGOING') {
+    throw Errors.eventNotAllocatable();
+  }
+
+  const seats: SaoSeat[] = event.venue.seats.map((s) => ({
+    id: s.id,
+    rowLabel: s.rowLabel,
+    seatNumber: s.seatNumber,
+    section: s.section ?? null,
+    xCoord: s.xCoord,
+    yCoord: s.yCoord,
+    isAccessible: s.isAccessible,
+  }));
+
+  const attendees: SaoAttendee[] = event.tickets.map((t) => ({
+    userId: t.userId,
+    ticketId: t.id,
+    groupSize: 1,
+    needsAccessible: false,
+  }));
+
+  const result = await saoClient.run({ eventId, seats, attendees });
+
+  // Persist seat assignments + create Allocation audit record in one transaction
+  await prisma.$transaction([
+    ...result.assignments.map((a) =>
+      prisma.ticket.update({
+        where: { id: a.ticketId },
+        data: { seatId: a.seatId },
+      }),
+    ),
+    prisma.allocation.create({
+      data: {
+        eventId,
+        algorithmUsed: result.algorithmUsed,
+        utilizationRate: result.utilizationRate,
+        seatMapJson: JSON.parse(JSON.stringify(result.assignments)) as Prisma.InputJsonArray,
+      },
+    }),
+  ]);
+
+  return result;
 };
