@@ -30,4 +30,4 @@ export {
   type ResetPasswordInput,
   type RegisterFormValues,
   type ResetPasswordFormValues,
-} from './auth.schemas.js';
+} from './auth.schemas';
