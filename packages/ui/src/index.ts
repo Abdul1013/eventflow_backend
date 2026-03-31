@@ -12,3 +12,17 @@ export type { NotFoundPageProps } from './components/NotFoundPage';
 export { StatusBadge } from './components/StatusBadge';
 export { StepIndicator } from './components/StepIndicator';
 export type { StepIndicatorProps } from './components/StepIndicator';
+
+// ─── Formatters ───────────────────────────────────────────────────────────────
+export {
+  formatNaira,
+  formatNairaFromString,
+  formatEventDate,
+  formatDateShort,
+  formatRelativeTime,
+  formatSeatInfo,
+} from './lib/formatters';
+
+// ─── Utility components ───────────────────────────────────────────────────────
+export { EmptyState } from './components/EmptyState';
+export type { EmptyStateProps } from './components/EmptyState';

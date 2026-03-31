@@ -92,3 +92,13 @@ export type {
   TransferTicketDto,
   TicketTransferResult,
 } from './ticket.types.js';
+
+// ─── Analytics types ──────────────────────────────────────────────────────────
+export type {
+  SalesDataPoint,
+  CheckInDataPoint,
+  TicketTypeBreakdown,
+  CapacityStats,
+  AllocationHistoryEntry,
+  EventAnalytics,
+} from './analytics.types.js';
