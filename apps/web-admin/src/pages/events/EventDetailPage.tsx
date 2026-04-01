@@ -13,28 +13,19 @@ import {
   Ticket,
   ChevronLeft,
   ChevronRight,
+  ScanLine,
 } from 'lucide-react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import type { EventDetail } from '@eventflow/types';
-import { StatusBadge, Badge } from '@eventflow/ui';
-import { SeatMapPreview } from '@/components/SeatMapPreview';
+import { StatusBadge } from '@eventflow/ui';
+import { SeatMapTab } from '@/components/events/SeatMapTab';
+import { LiveCheckinTab } from '@/components/events/LiveCheckinTab';
+import { AnalyticsTab } from '@/components/events/AnalyticsTab';
 import { api } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ApiResp<T> = { success: boolean; data: T; meta?: { page: number; total: number; limit: number } };
-type Tab = 'overview' | 'tickets' | 'attendees' | 'seatmap' | 'analytics';
-
-interface LayoutSeat { number: string; x: number; y: number; accessible: boolean }
-interface LayoutRow { label: string; seats: LayoutSeat[] }
+type Tab = 'overview' | 'tickets' | 'attendees' | 'seatmap' | 'analytics' | 'checkin';
 
 interface AttendeeTicket {
   id: string;
@@ -65,14 +56,6 @@ function fmtPrice(price: string) {
   return n === 0 ? 'Free' : `₦${n.toLocaleString()}`;
 }
 
-function parseLayout(layoutJson: unknown): LayoutRow[] {
-  if (layoutJson && typeof layoutJson === 'object' && 'rows' in layoutJson &&
-    Array.isArray((layoutJson as { rows: unknown }).rows)) {
-    return (layoutJson as { rows: LayoutRow[] }).rows;
-  }
-  return [];
-}
-
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-700',
   USED: 'bg-blue-100 text-blue-700',
@@ -91,11 +74,12 @@ const STATUS_ACTIONS: Partial<Record<string, { label: string; nextStatus: string
 // ─── Tabs config ──────────────────────────────────────────────────────────────
 
 const TABS: { id: Tab; label: string; Icon: React.ElementType }[] = [
-  { id: 'overview',   label: 'Overview',   Icon: Calendar },
-  { id: 'tickets',    label: 'Sales',      Icon: Ticket },
-  { id: 'attendees',  label: 'Attendees',  Icon: Users },
-  { id: 'seatmap',    label: 'Seat Map',   Icon: LayoutGrid },
-  { id: 'analytics',  label: 'Analytics',  Icon: BarChart3 },
+  { id: 'overview',   label: 'Overview',     Icon: Calendar },
+  { id: 'tickets',    label: 'Sales',        Icon: Ticket },
+  { id: 'attendees',  label: 'Attendees',    Icon: Users },
+  { id: 'seatmap',    label: 'Seat Map',     Icon: LayoutGrid },
+  { id: 'analytics',  label: 'Analytics',    Icon: BarChart3 },
+  { id: 'checkin',    label: 'Live Check-In', Icon: ScanLine },
 ];
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -157,7 +141,6 @@ export default function EventDetailPage() {
   }
 
   const action = STATUS_ACTIONS[event.status];
-  const layoutRows = parseLayout(event.venue.layoutJson);
   const totalSold = event.ticketTypes.reduce((s, tt) => s + tt.quantitySold, 0);
   const totalCapacity = event.ticketTypes.reduce((s, tt) => s + tt.quantityTotal, 0);
   const attendeeTotal = attendeeData?.meta?.total ?? 0;
@@ -402,44 +385,22 @@ export default function EventDetailPage() {
 
       {/* ── Seat map tab ── */}
       {activeTab === 'seatmap' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-            Venue Layout — {event.venue.name}
-          </h2>
-          {layoutRows.length > 0 ? (
-            <SeatMapPreview rows={layoutRows} />
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-12">No seat map available for this venue.</p>
-          )}
-        </div>
+        <SeatMapTab
+          eventId={event.id}
+          eventStatus={event.status}
+          venueName={event.venue.name}
+          layoutJson={event.venue.layoutJson}
+        />
       )}
 
       {/* ── Analytics tab ── */}
       {activeTab === 'analytics' && (
-        <div className="bg-white border border-gray-200 rounded-lg p-5">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-5">Ticket Sales</h2>
-          {event.ticketTypes.length > 0 ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={event.ticketTypes.map((tt) => ({
-                  name: tt.name,
-                  Sold: tt.quantitySold,
-                  Remaining: tt.quantityTotal - tt.quantitySold,
-                }))}
-                margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Bar dataKey="Sold" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Remaining" fill="#e0e7ff" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-12">No ticket data available.</p>
-          )}
-        </div>
+        <AnalyticsTab eventId={event.id} eventStatus={event.status} />
+      )}
+
+      {/* ── Live Check-In tab ── */}
+      {activeTab === 'checkin' && (
+        <LiveCheckinTab eventId={event.id} />
       )}
     </div>
   );
