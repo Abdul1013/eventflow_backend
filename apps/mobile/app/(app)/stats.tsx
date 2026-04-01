@@ -12,22 +12,13 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { formatRelativeTime } from '@eventflow/ui';
 import { api } from '@/src/lib/api';
 import { useScannerStore } from '@/src/store/scannerStore';
 import { OPEN_EVENT_SELECTOR, SCANNER_STATS_REFRESH } from '@/src/lib/networkListener';
 import type { CheckInStats, RecentScan } from '@eventflow/types';
 
-// ─── Helpers 
-
-function timeAgo(isoStr: string): string {
-  const diffMs = Date.now() - new Date(isoStr).getTime();
-  const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin} min ago`;
-  const diffHrs = Math.floor(diffMin / 60);
-  if (diffHrs < 24) return `${diffHrs}h ago`;
-  return `${Math.floor(diffHrs / 24)}d ago`;
-}
+// ─── Helpers
 
 function resultColor(result: string): string {
   if (result === 'VALID') return '#059669';        // emerald-600
@@ -297,7 +288,7 @@ export default function StatsScreen() {
                     <Text style={styles.scanName} numberOfLines={1}>
                       {scan.attendeeName}
                     </Text>
-                    <Text style={styles.scanTime}>{timeAgo(scan.scannedAt)}</Text>
+                    <Text style={styles.scanTime}>{formatRelativeTime(scan.scannedAt)}</Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: resultBg(scan.result) }]}>
                     <Text style={[styles.badgeText, { color: resultColor(scan.result) }]}>

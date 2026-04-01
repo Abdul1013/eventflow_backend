@@ -8,6 +8,7 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,107 +46,176 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-gray-50"
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 justify-center px-6 py-12">
-          {/* Header */}
-          <View className="mb-8">
-            <Text className="text-3xl font-bold text-indigo-600">EventFlow</Text>
-            <Text className="text-xl font-semibold text-gray-900 mt-1">Staff Portal</Text>
-            <Text className="text-sm text-gray-500 mt-1">Sign in to manage check-ins</Text>
+        <View style={styles.inner}>
+
+          {/* ── Top: logo + card */}
+          <View>
+            <View style={styles.logoWrap}>
+              <Text style={styles.logoText}>EventFlow</Text>
+              <Text style={styles.logoSub}>Staff Portal</Text>
+              <Text style={styles.logoHint}>Sign in to manage check-ins</Text>
+            </View>
+
+            <View style={styles.card}>
+              {serverError && (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorText}>{serverError}</Text>
+                </View>
+              )}
+
+              <View style={styles.fields}>
+
+                {/* Email */}
+                <View>
+                  <Text style={styles.label}>Email address</Text>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        style={[styles.input, errors.email && styles.inputError]}
+                        placeholder="staff@example.com"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="email"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    )}
+                  />
+                  {errors.email && (
+                    <Text style={styles.fieldError}>{errors.email.message}</Text>
+                  )}
+                </View>
+
+                {/* Password */}
+                <View>
+                  <Text style={styles.label}>Password</Text>
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <TextInput
+                        style={[styles.input, errors.password && styles.inputError]}
+                        placeholder="••••••••"
+                        placeholderTextColor="#9CA3AF"
+                        secureTextEntry
+                        autoComplete="current-password"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    )}
+                  />
+                  {errors.password && (
+                    <Text style={styles.fieldError}>{errors.password.message}</Text>
+                  )}
+                </View>
+
+                {/* Submit */}
+                <TouchableOpacity
+                  style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isSubmitting}
+                  activeOpacity={0.8}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitText}>Sign in</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
-          {/* Error banner */}
-          {serverError && (
-            <View className="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <Text className="text-sm text-red-700">{serverError}</Text>
-            </View>
-          )}
-
-          {/* Form */}
-          <View className="gap-y-4">
-            
-            {/* Email field */}
-            <View>
-              <Text className="text-sm font-medium text-gray-700 mb-1.5">Email address</Text>
-              <Controller
-                control={control}
-                name="email"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={{ minHeight: 52 }}
-                    className={`rounded-xl border px-4 text-base bg-white ${
-                      errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="staff@example.com"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                  />
-                )}
-              />
-              {errors.email && (
-                <Text className="mt-1 text-xs text-red-600">{errors.email.message}</Text>
-              )}
-            </View>
-
-            {/* Password field */}
-            <View>
-              <Text className="text-sm font-medium text-gray-700 mb-1.5">Password</Text>
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    style={{ minHeight: 52 }}
-                    className={`rounded-xl border px-4 text-base bg-white ${
-                      errors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'
-                    }`}
-                    placeholder="••••••••"
-                    placeholderTextColor="#9CA3AF"
-                    secureTextEntry
-                    autoComplete="current-password"
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    value={value}
-                  />
-                )}
-              />
-              {errors.password && (
-                <Text className="mt-1 text-xs text-red-600">{errors.password.message}</Text>
-              )}
-            </View>
-
-            {/* Submit button */}
-            <TouchableOpacity
-              style={{ minHeight: 52 }}
-              className={`mt-2 rounded-xl items-center justify-center ${
-                isSubmitting ? 'bg-indigo-400' : 'bg-indigo-600'
-              }`}
-              onPress={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              activeOpacity={0.8}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-base font-semibold text-white">Sign in</Text>
-              )}
-            </TouchableOpacity>
+          {/* ── Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Powered by EventFlow</Text>
           </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: '#F9FAFB' },
+  scroll: { flexGrow: 1 },
+  inner:  { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+
+  // Logo
+  logoWrap: { alignItems: 'center', marginBottom: 32 },
+  logoText: { fontSize: 32, fontWeight: '700', color: '#4F46E5' },
+  logoSub:  { fontSize: 16, color: '#6B7280', marginTop: 4 },
+  logoHint: { fontSize: 14, color: '#9CA3AF', marginTop: 4 },
+
+  // Card
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: 350,
+    maxWidth: 500,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  // Error
+  errorBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  errorText: { fontSize: 14, color: '#B91C1C' },
+
+  // Fields
+  fields:     { gap: 16 },
+  label:      { fontSize: 14, fontWeight: '500', color: '#374151', marginBottom: 6 },
+  input: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#111827',
+    backgroundColor: '#fff',
+  },
+  inputError:  { borderColor: '#F87171', backgroundColor: '#FEF2F2' },
+  fieldError:  { fontSize: 12, color: '#DC2626', marginTop: 4 },
+
+  // Button
+  submitBtn: {
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#4F46E5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  submitBtnDisabled: { backgroundColor: '#A5B4FC' },
+  submitText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+
+  // Footer
+  footer:     { alignItems: 'center', marginTop: 32 },
+  footerText: { fontSize: 12, color: '#9CA3AF' },
+});
