@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { env } from '../config/env.js';
+import { logger } from './logger.js';
 import { verificationEmailTemplate } from './templates/verificationEmail.js';
 import { passwordResetEmailTemplate } from './templates/passwordResetEmail.js';
 import { ticketEmailTemplate } from './templates/ticketEmail.js';
@@ -20,7 +21,7 @@ const silentSend = async (
   payload: Parameters<Resend['emails']['send']>[0],
 ): Promise<void> => {
   if (!resend) {
-    console.warn('[email] RESEND_API_KEY not set — skipping email send');
+    logger.warn('[email] RESEND_API_KEY not set — skipping email send');
     return;
   }
   // In development, Resend only delivers to the account owner's email.
@@ -32,19 +33,19 @@ const silentSend = async (
       : originalTo;
 
   if (actualTo !== originalTo) {
-    console.info(`[email] DEV: redirecting ${originalTo} → ${actualTo}`);
+    logger.info(`[email] DEV: redirecting ${originalTo} → ${actualTo}`);
   }
 
-  console.info('[email] Attempting send to', actualTo, `"${payload.subject}"`);
+  logger.info({ to: actualTo, subject: payload.subject }, '[email] Attempting send');
   try {
     const { data, error } = await resend.emails.send({ ...payload, to: actualTo });
     if (error) {
-      console.error('[email] Send failed:', error);
+      logger.error({ error }, '[email] Send failed');
       return;
     }
-    console.info('[email] Sent → id:', data?.id, '| to:', actualTo);
+    logger.info({ id: data?.id, to: actualTo }, '[email] Sent');
   } catch (err) {
-    console.error('[email] Unexpected error:', err);
+    logger.error({ err }, '[email] Unexpected error');
   }
 };
 
