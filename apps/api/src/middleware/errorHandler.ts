@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { AppError } from '../lib/AppError.js';
 import { env } from '../config/env.js';
+import { logger } from '../lib/logger.js';
 
 export const errorHandler = (
   err: unknown,
@@ -34,7 +35,7 @@ export const errorHandler = (
   // Unexpected errors — never leak internals in production
   const message = env.NODE_ENV === 'development' && err instanceof Error ? err.message : 'Internal server error';
 
-  console.error('[errorHandler] Unhandled error:', err);
+  logger.error({ err }, '[errorHandler] Unhandled error');
   res.status(500).json({
     success: false,
     error: { code: 'INTERNAL_ERROR', message },
