@@ -1,0 +1,23 @@
+name: Mobile Build (EAS)
+on:
+  workflow_dispatch:         # Manual trigger only — EAS builds take 10-15 min
+    inputs:
+      profile:
+        description: 'Build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options: [development, preview, production]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm install -g eas-cli
+      - run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
