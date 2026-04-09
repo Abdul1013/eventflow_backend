@@ -1,13 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CalendarDays, Ticket, ScanLine, Users } from 'lucide-react';
-import type { AdminStats, EventRow } from '@eventflow/types';
+import type { AdminStats, AdminEventListItem } from '@eventflow/types';
 import { api } from '@/lib/api';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { PageHeader } from '@/components/ui/PageHeader';
 
-// Local types 
+// Local types
 interface PaginatedEvents {
-  events: EventRow[];
+  events: AdminEventListItem[];
   total: number;
   page: number;
   limit: number;
@@ -65,7 +66,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <PageHeader title="Dashboard" subtitle="Overview of your EventFlow platform" />
 
       {/* Stat cards */}
       {statsError && (
@@ -148,7 +149,9 @@ export default function DashboardPage() {
                       ))}
                     </tr>
                   ))
-                : (events ?? []).map((ev: EventRow) => {
+                : (events ?? []).map((ev) => {
+                    const sold  = ev.ticketTypes.reduce((s, t) => s + t.quantitySold, 0);
+                    const total = ev.ticketTypes.reduce((s, t) => s + t.quantityTotal, 0);
                     const badge = STATUS_BADGE[ev.status] ?? 'bg-gray-100 text-gray-600';
                     return (
                       <tr key={ev.id} className="hover:bg-gray-50 transition-colors">
@@ -171,7 +174,9 @@ export default function DashboardPage() {
                             {ev.status.charAt(0) + ev.status.slice(1).toLowerCase()}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">—</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {total > 0 ? `${sold} / ${total}` : '—'}
+                        </td>
                       </tr>
                     );
                   })}

@@ -32,8 +32,12 @@ export default function LoginPage() {
     try {
       await login(data.email, data.password);
       navigate('/', { replace: true });
-    } catch {
-      setServerError('Invalid email or password. Please try again.');
+    } catch (err) {
+      if (err instanceof Error && err.message === 'NOT_ADMIN') {
+        setServerError('Access denied. This portal is for admin accounts only.');
+      } else {
+        setServerError('Invalid email or password. Please try again.');
+      }
     }
   };
 
