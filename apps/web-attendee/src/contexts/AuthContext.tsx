@@ -22,18 +22,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<void> => {
     const res = await api.post<{ data: LoginResponseData }>('/auth/login', { email, password });
-    const { user, tokens } = res.data.data;
-    if (user.role !== 'ADMIN') {
-      throw new Error('NOT_ADMIN');
-    }
-    setAuth({ user, accessToken: tokens.accessToken });
+    setAuth({ user: res.data.data.user, accessToken: res.data.data.tokens.accessToken });
   };
 
   const logout = async (): Promise<void> => {
     try {
       await api.post('/auth/logout');
     } finally {
-      // Clear store regardless of whether the API call succeeds
       clearAuth();
     }
   };
