@@ -1,0 +1,788 @@
+{
+  "info": {
+    "_postman_id": "ef100000-cafe-4a11-beef-000000000001",
+    "name": "EventFlow API",
+    "description": "Complete API collection for EventFlow — LCU Final Year Project\nCandidate: Ogundipe Mubin Prince (LCU/UG/22/24676)\n\nSet {{base_url}} to http://localhost:3001/api/v1 for local development.\nAfter calling POST /auth/login the access_token variable is set automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url",     "value": "http://localhost:3001/api/v1" },
+    { "key": "sao_url",      "value": "http://localhost:8000" },
+    { "key": "access_token", "value": "" },
+    { "key": "event_id",     "value": "" },
+    { "key": "ticket_id",    "value": "" },
+    { "key": "venue_id",     "value": "" },
+    { "key": "user_id",      "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tunde Adebayo\",\n  \"email\": \"tunde@example.com\",\n  \"password\": \"Password1!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Create a new ATTENDEE account. Sends a verification email (requires RESEND_API_KEY). Responds 201 with user data and access token."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Save access token\", function () {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set(\"access_token\", json.data.accessToken);",
+                  "  }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@eventflow.app\",\n  \"password\": \"EventFlow2026!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates a user. Returns JWT access token (15 min) in body and sets HttpOnly refresh cookie (7 days). Test script saves access_token to collection variable."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Rotates the refresh token stored in the HttpOnly cookie. Returns a new access token. The old refresh token is immediately revoked in Redis."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Revokes the current refresh token and clears the HttpOnly cookie. Returns 204."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tunde@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "forgot-password"]
+            },
+            "description": "Sends a password reset email. Always returns 200 regardless of whether the account exists (prevents user enumeration)."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<reset-token-from-email>\",\n  \"password\": \"NewPassword1!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "reset-password"]
+            },
+            "description": "Resets the password using the token from the forgot-password email. Token is single-use and TTL-expired in Redis."
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/verify-email?token=<verification-token>",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-email"],
+              "query": [{ "key": "token", "value": "<verification-token>" }]
+            },
+            "description": "Verifies the email address using the token sent after registration. Sets emailVerified=true on the user."
+          }
+        },
+        {
+          "name": "Me (Current User)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Returns the authenticated user's profile. Useful to verify the token and fetch current role."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events?page=1&limit=20&status=PUBLISHED",
+              "host": ["{{base_url}}"],
+              "path": ["events"],
+              "query": [
+                { "key": "page",   "value": "1" },
+                { "key": "limit",  "value": "20" },
+                { "key": "status", "value": "PUBLISHED" }
+              ]
+            },
+            "description": "Public endpoint. Returns paginated events. Supports ?status=DRAFT|PUBLISHED|ONGOING|ENDED|CANCELLED and ?search= text."
+          }
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"LCU Tech Summit 2026\",\n  \"description\": \"Annual technology conference at Lead City University featuring keynotes, workshops, and networking.\",\n  \"venueId\": \"{{venue_id}}\",\n  \"startsAt\": \"2026-04-15T09:00:00.000Z\",\n  \"endsAt\": \"2026-04-15T18:00:00.000Z\",\n  \"ticketTypes\": [\n    { \"name\": \"VIP\",     \"price\": 5000, \"quantityTotal\": 50,  \"description\": \"Front rows with priority access\" },\n    { \"name\": \"Regular\", \"price\": 2000, \"quantityTotal\": 450, \"description\": \"Standard seating\" }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "description": "Creates a new event in DRAFT status. Requires ADMIN role. Returns the created event with ticket types."
+          }
+        },
+        {
+          "name": "Get Event",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}"]
+            },
+            "description": "Public endpoint. Returns full event details including venue, ticket types, and availability counts."
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description with more details about the venue and schedule.\",\n  \"endsAt\": \"2026-04-15T20:00:00.000Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}"]
+            },
+            "description": "Partial update for an event. Requires ADMIN role. Cannot update status via this endpoint — use PATCH /events/:id/status."
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}"]
+            },
+            "description": "Soft-deletes an event (sets deletedAt). Only allowed on DRAFT or CANCELLED events. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Update Event Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PUBLISHED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "status"]
+            },
+            "description": "Transitions event status. Valid transitions: DRAFT→PUBLISHED, PUBLISHED→ONGOING, ONGOING→ENDED, any→CANCELLED. Requires ADMIN."
+          }
+        },
+        {
+          "name": "Upload Banner",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "banner", "type": "file", "description": "JPEG or PNG, max 5 MB" }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/banner",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "banner"]
+            },
+            "description": "Uploads a banner image to Cloudinary. Returns updated event with bannerUrl. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Get Seat Map",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/seats",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "seats"]
+            },
+            "description": "Returns all seats for the event's venue with current allocation status (available / allocated / occupied)."
+          }
+        },
+        {
+          "name": "Run Seat Allocation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"strategy\": \"greedy\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/allocate",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "allocate"]
+            },
+            "description": "Calls the SAO Python engine to assign seats to all ACTIVE tickets. Saves the allocation run record. Requires ADMIN."
+          }
+        },
+        {
+          "name": "Get Allocation History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/allocations",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "allocations"]
+            },
+            "description": "Returns the 10 most recent allocation runs for the event, with utilisation rates and algorithm used. Used in admin analytics."
+          }
+        },
+        {
+          "name": "Compare Allocation (H1 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/events/{{event_id}}/allocate/compare",
+              "host": ["{{base_url}}"],
+              "path": ["events", "{{event_id}}", "allocate", "compare"]
+            },
+            "description": "H1 VALIDATION — Compares greedy allocation vs manual baseline. Returns utilisationGain (%). A value ≥ 15% passes Hypothesis 1. Requires ADMIN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tickets?page=1&limit=20&status=ACTIVE",
+              "host": ["{{base_url}}"],
+              "path": ["tickets"],
+              "query": [
+                { "key": "page",    "value": "1" },
+                { "key": "limit",   "value": "20" },
+                { "key": "status",  "value": "ACTIVE" },
+                { "key": "eventId", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Returns paginated tickets belonging to the authenticated user. Supports ?status= and ?eventId= filters. qrToken is omitted from list responses."
+          }
+        },
+        {
+          "name": "Purchase Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"ticketTypeId\": \"<ticket-type-uuid>\",\n  \"preferences\": {\n    \"section\": \"Main Floor\",\n    \"nearAisle\": false,\n    \"accessibility\": false\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets",
+              "host": ["{{base_url}}"],
+              "path": ["tickets"]
+            },
+            "description": "Purchases a ticket for the authenticated ATTENDEE. Sends a QR code confirmation email asynchronously. Returns the ticket with qrToken."
+          }
+        },
+        {
+          "name": "Get Ticket (with QR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tickets/{{ticket_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", "{{ticket_id}}"]
+            },
+            "description": "Returns full ticket details including the base64-encoded qrToken. Returns 403 if the ticket belongs to a different user."
+          }
+        },
+        {
+          "name": "Cancel Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Unable to attend\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets/{{ticket_id}}/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", "{{ticket_id}}", "cancel"]
+            },
+            "description": "Sets ticket status to CANCELLED. ATTENDEEs can only cancel their own tickets. Returns 400 if already USED or CANCELLED."
+          }
+        },
+        {
+          "name": "Transfer Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientEmail\": \"recipient@example.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/tickets/{{ticket_id}}/transfer",
+              "host": ["{{base_url}}"],
+              "path": ["tickets", "{{ticket_id}}", "transfer"]
+            },
+            "description": "Marks the current ticket TRANSFERRED, creates a new ACTIVE ticket for the recipient (who must have an existing account), and emails both parties."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check-In",
+      "item": [
+        {
+          "name": "Scan QR Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<hmac-signed-qr-token-from-ticket>\",\n  \"eventId\": \"{{event_id}}\",\n  \"deviceInfo\": \"Postman / test\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/checkin/scan",
+              "host": ["{{base_url}}"],
+              "path": ["checkin", "scan"]
+            },
+            "description": "H3 VALIDATION — Validates HMAC-signed QR token and marks ticket USED. Returns result: SUCCESS | ALREADY_USED | INVALID_TOKEN | WRONG_EVENT. Requires STAFF or ADMIN."
+          }
+        },
+        {
+          "name": "Manual Check-In",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticketId\": \"{{ticket_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/checkin/manual",
+              "host": ["{{base_url}}"],
+              "path": ["checkin", "manual"]
+            },
+            "description": "Admin-only override for damaged QR codes or printed tickets. Looks up the ticket by UUID and marks it USED. Requires ADMIN."
+          }
+        },
+        {
+          "name": "Check-In Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/checkin/stats/{{event_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["checkin", "stats", "{{event_id}}"]
+            },
+            "description": "Returns live check-in counts, capacity percentage, and the 20 most recent scan entries. Cached in Redis for 25 seconds. Auto-refreshed by mobile app every 30 s. Requires STAFF or ADMIN."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Venues",
+      "item": [
+        {
+          "name": "List Venues",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venues",
+              "host": ["{{base_url}}"],
+              "path": ["venues"]
+            },
+            "description": "Returns all venues. Requires authentication. Used to populate the venue selector when creating an event."
+          }
+        },
+        {
+          "name": "Create Venue",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"LCU Main Auditorium\",\n  \"address\": \"Lead City University, Toll Gate Area\",\n  \"city\": \"Ibadan\",\n  \"totalCapacity\": 500,\n  \"layoutJson\": {\n    \"sections\": [\n      { \"name\": \"Main Floor\", \"rows\": 10, \"seatsPerRow\": 50 }\n    ]\n  },\n  \"sections\": [\n    {\n      \"name\": \"Main Floor\",\n      \"rows\": [\n        { \"label\": \"A\", \"seats\": 50 },\n        { \"label\": \"B\", \"seats\": 50 }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/venues",
+              "host": ["{{base_url}}"],
+              "path": ["venues"]
+            },
+            "description": "Creates a venue and its seat records. Requires ADMIN. The sections array is used to generate individual Seat rows in the database."
+          }
+        },
+        {
+          "name": "Get Venue",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/venues/{{venue_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["venues", "{{venue_id}}"]
+            },
+            "description": "Returns a single venue with its seat records and layout JSON. Used by the seat map preview component."
+          }
+        },
+        {
+          "name": "Update Venue",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Lead City University, Ibadan — Gate 2\",\n  \"totalCapacity\": 520\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/venues/{{venue_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["venues", "{{venue_id}}"]
+            },
+            "description": "Partially updates a venue's metadata. Requires ADMIN. Does not modify individual seat records."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/stats",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "stats"]
+            },
+            "description": "Returns platform-wide aggregate counts: total events, tickets sold, active users, and revenue. Displayed on the admin dashboard homepage."
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/users?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Returns a paginated list of all platform users with their roles and email verification status. Requires ADMIN."
+          }
+        },
+        {
+          "name": "Update User Role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"STAFF\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/users/{{user_id}}/role",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "users", "{{user_id}}", "role"]
+            },
+            "description": "Promotes or demotes a user. Valid roles: ADMIN | STAFF | ATTENDEE. Used to grant staff members access to the scanner app."
+          }
+        },
+        {
+          "name": "Event Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/events/{{event_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "events", "{{event_id}}", "analytics"]
+            },
+            "description": "Returns time-series sales data, check-in rate, ticket type breakdown, revenue total, capacity stats, and allocation history. Powers the admin Analytics tab."
+          }
+        },
+        {
+          "name": "Event Tickets (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/events/{{event_id}}/tickets?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "events", "{{event_id}}", "tickets"],
+              "query": [
+                { "key": "page",  "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Lists all tickets sold for a specific event with attendee names and seat assignments. Admin-only, not scoped to the current user."
+          }
+        },
+        {
+          "name": "Get Any Ticket (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/tickets/{{ticket_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "tickets", "{{ticket_id}}"]
+            },
+            "description": "Retrieves full ticket details including qrToken. Unlike the attendee endpoint, admin can access any ticket regardless of owner."
+          }
+        }
+      ]
+    },
+    {
+      "name": "SAO Engine (Direct)",
+      "item": [
+        {
+          "name": "SAO Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{sao_url}}/health",
+              "host": ["{{sao_url}}"],
+              "path": ["health"]
+            },
+            "description": "Direct call to the Python FastAPI service. Returns { status: 'ok', algorithm: 'greedy' }."
+          }
+        },
+        {
+          "name": "SAO Allocate",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "X-Api-Secret",  "value": "<SAO_ENGINE_SECRET>" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"tickets\": [\n    { \"ticketId\": \"<uuid>\", \"preferences\": { \"section\": \"Main Floor\", \"accessibility\": false } }\n  ],\n  \"seats\": [\n    { \"seatId\": \"<uuid>\", \"rowLabel\": \"A\", \"seatNumber\": \"1\", \"xCoord\": 40, \"yCoord\": 50, \"isAccessible\": false }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{sao_url}}/api/v1/allocate",
+              "host": ["{{sao_url}}"],
+              "path": ["api", "v1", "allocate"]
+            },
+            "description": "Direct call to the SAO engine's greedy allocation algorithm. In normal operation this is called internally by the Node.js API — use only for debugging."
+          }
+        },
+        {
+          "name": "SAO Compare",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "X-Api-Secret",  "value": "<SAO_ENGINE_SECRET>" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"tickets\": [],\n  \"seats\": []\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{sao_url}}/api/v1/compare",
+              "host": ["{{sao_url}}"],
+              "path": ["api", "v1", "compare"]
+            },
+            "description": "Direct call to compare greedy vs manual baseline allocation. Returns utilisationGain. In normal operation called by POST /events/:id/allocate/compare."
+          }
+        }
+      ]
+    }
+  ]
+}
