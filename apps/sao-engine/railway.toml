@@ -1,0 +1,13 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/sao-engine/Dockerfile"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port 8000"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "eventflow-sao"
