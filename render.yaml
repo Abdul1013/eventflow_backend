@@ -1,0 +1,104 @@
+# EventFlow — Render Blueprint
+# Deploy with: Render Dashboard → "New +" → "Blueprint" → connect repo → apply.
+# Re-applies are idempotent: changing this file and pushing updates the live infra.
+
+databases:
+  - name: eventflow-postgres
+    databaseName: eventflow
+    user: eventflow
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  # ─── Redis (managed Key Value) 
+  - type: redis
+    name: eventflow-redis
+    plan: free
+    ipAllowList: []           # private — only reachable from services in this blueprint
+    maxmemoryPolicy: allkeys-lru
+
+  # ─── SAO Engine (FastAPI, private)
+  - type: pserv              # private service — internal-only, no public URL
+    name: eventflow-sao
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/sao-engine/Dockerfile
+    dockerContext: ./apps/sao-engine
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: "8000"         # pinned so SAO_ENGINE_URL stays deterministic for the API
+      - key: ALLOWED_ORIGINS
+        value: ""             # SAO is server-to-server only; no browser CORS needed
+      - key: SAO_ENGINE_SECRET
+        generateValue: true   # shared with API via fromService below
+
+  # ─── EventFlow API (Express, public) 
+  - type: web
+    name: eventflow-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    preDeployCommand: npx prisma migrate deploy
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+
+      # ── Database & cache (auto-wired from blueprint resources)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventflow-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: eventflow-redis
+          property: connectionString
+
+      # ── Secrets (auto-generated; rotate via Render dashboard if leaked) ─────
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: HMAC_SECRET
+        generateValue: true
+      - key: SEED_ADMIN_PASSWORD
+        generateValue: true   # one-time admin password; read from dashboard after first deploy
+
+      # ── SAO engine wiring (internal Render network) ─────────────────────────
+      # SAO is a private service pinned to PORT=8000, so the internal URL is
+      # deterministic. Render resolves `eventflow-sao` over the private network.
+      - key: SAO_ENGINE_URL
+        value: http://eventflow-sao:8000
+      - key: SAO_ENGINE_SECRET
+        fromService:
+          type: pserv
+          name: eventflow-sao
+          envVarKey: SAO_ENGINE_SECRET
+
+      # ── Cloudinary (set in dashboard — sync:false skips render.yaml ownership) ─
+      - key: CLOUDINARY_URL
+        sync: false
+
+      # ── Frontend / CORS (placeholders; replace once domains exist) ──────────
+      # Render will assign URLs like https://eventflow-api.onrender.com.
+      # Set FRONTEND_URL / ADMIN_URL / CORS_ORIGINS in the dashboard once the
+      # web-admin and web-attendee apps are deployed (e.g. on Vercel).
+      - key: FRONTEND_URL
+        sync: false
+      - key: ADMIN_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # API_URL is used only for email verification links, which are off for v1.
+      # Set in the dashboard once your custom domain (or onrender.com URL) is known.
+      - key: API_URL
+        sync: false
+
+      # ── Email (skipped for v1; add RESEND_API_KEY here later to enable) ────
+      # - key: RESEND_API_KEY
+      #   sync: false

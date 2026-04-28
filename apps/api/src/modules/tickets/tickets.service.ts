@@ -7,7 +7,6 @@ import { logger } from '../../lib/logger.js';
 import type { PurchaseTicketDto, ListTicketsQuery, TransferTicketDto } from './tickets.dto.js';
 import type { TicketStatus } from '@prisma/client';
 
-// ─── Include shapes ───────────────────────────────────────────────────────────
 
 const ticketInclude = {
   event: {
@@ -24,7 +23,7 @@ const ticketInclude = {
   seat: { select: { rowLabel: true, seatNumber: true, section: true } },
 } as const;
 
-// ─── Date / seat formatting helpers ──────────────────────────────────────────
+// Date / seat formatting helpers 
 
 function formatEventDate(startsAt: Date, endsAt: Date): string {
   const tz = 'Africa/Lagos';
@@ -46,7 +45,7 @@ function formatSeatInfo(
   return seat.section ? `${base} — ${seat.section}` : base;
 }
 
-// ─── getMyTickets ─────────────────────────────────────────────────────────────
+// getMyTickets 
 
 export const getMyTickets = async (userId: string, query: ListTicketsQuery) => {
   const { page, limit, status, eventId } = query;
@@ -54,7 +53,7 @@ export const getMyTickets = async (userId: string, query: ListTicketsQuery) => {
 
   const where = {
     userId,
-    deletedAt: null as null | undefined,
+    deletedAt: null,
     ...(status ? { status: status as TicketStatus } : {}),
     ...(eventId ? { eventId } : {}),
   };
@@ -76,7 +75,7 @@ export const getMyTickets = async (userId: string, query: ListTicketsQuery) => {
   return { tickets, total, page, limit };
 };
 
-// ─── getTicketById ────────────────────────────────────────────────────────────
+// getTicketById 
 
 export const getTicketById = async (ticketId: string, userId: string, isAdmin = false) => {
   const ticket = await prisma.ticket.findFirst({
@@ -92,7 +91,7 @@ export const getTicketById = async (ticketId: string, userId: string, isAdmin = 
   return { ...ticket, qrDataUrl };
 };
 
-// ─── purchaseTicket ───────────────────────────────────────────────────────────
+// purchaseTicket 
 
 export const purchaseTicket = async (userId: string, dto: PurchaseTicketDto) => {
   const ticketId = crypto.randomUUID();
@@ -159,7 +158,7 @@ export const purchaseTicket = async (userId: string, dto: PurchaseTicketDto) => 
   return ticket;
 };
 
-// ─── cancelTicket ─────────────────────────────────────────────────────────────
+// cancelTicket 
 
 export const cancelTicket = async (ticketId: string, userId: string) => {
   // Fetch without deletedAt filter so we give an accurate 409 on double-cancel
@@ -184,7 +183,7 @@ export const cancelTicket = async (ticketId: string, userId: string) => {
   void redisDel(`qr:${ticket.qrToken}`);
 };
 
-// ─── transferTicket ───────────────────────────────────────────────────────────
+// transferTicket 
 
 export const transferTicket = async (ticketId: string, fromUserId: string, dto: TransferTicketDto) => {
   const ticket = await prisma.ticket.findFirst({
