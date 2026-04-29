@@ -23,6 +23,7 @@
     "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^5.0.1",
     "express-rate-limit": "^7.4.1",
     "helmet": "^7.1.0",
@@ -41,7 +42,6 @@
   "devDependencies": {
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "dotenv": "^16.4.7",
     "@types/bcrypt": "^5.0.2",
     "@types/multer": "^1.4.12",
     "@types/cookie-parser": "^1.4.8",
