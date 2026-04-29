@@ -24,7 +24,6 @@ services:
     plan: free
     dockerfilePath: ./apps/sao-engine/Dockerfile
     dockerContext: ./apps/sao-engine
-    healthCheckPath: /health
     envVars:
       - key: PORT
         value: "8000"         # pinned so SAO_ENGINE_URL stays deterministic for the API
@@ -41,7 +40,8 @@ services:
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    preDeployCommand: npx prisma migrate deploy
+    # Free tier doesn't support preDeployCommand; the API container runs
+    # `prisma migrate deploy` on startup before launching the server.
     envVars:
       - key: NODE_ENV
         value: production

@@ -41,4 +41,7 @@ COPY --from=builder /repo/apps/api/dist ./dist
 COPY --from=builder /repo/apps/api/prisma ./prisma
 
 EXPOSE 3001
-CMD ["node", "dist/server.js"]
+# Run pending migrations before starting the server.
+# Render's free tier has no preDeployCommand, so we do it in the entrypoint.
+# `migrate deploy` is idempotent — no-op when the DB is already up to date.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
