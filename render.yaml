@@ -17,18 +17,20 @@ services:
     ipAllowList: []           # private — only reachable from services in this blueprint
     maxmemoryPolicy: allkeys-lru
 
-  # ─── SAO Engine (FastAPI, private)
-  - type: pserv              # private service — internal-only, no public URL
+  # ─── SAO Engine (FastAPI) ───────────────────────────────────────────────────
+  # Free tier doesn't allow private services, so SAO is exposed publicly.
+  # Auth is still enforced via SAO_ENGINE_SECRET on every request, so the
+  # public URL only adds a network hop, not a trust boundary.
+  - type: web
     name: eventflow-sao
     runtime: docker
     plan: free
     dockerfilePath: ./apps/sao-engine/Dockerfile
     dockerContext: ./apps/sao-engine
+    healthCheckPath: /health
     envVars:
-      - key: PORT
-        value: "8000"         # pinned so SAO_ENGINE_URL stays deterministic for the API
       - key: ALLOWED_ORIGINS
-        value: ""             # SAO is server-to-server only; no browser CORS needed
+        value: ""             # SAO is called server-to-server; no browser CORS needed
       - key: SAO_ENGINE_SECRET
         generateValue: true   # shared with API via fromService below
 
@@ -69,14 +71,14 @@ services:
       - key: SEED_ADMIN_PASSWORD
         generateValue: true   # one-time admin password; read from dashboard after first deploy
 
-      # ── SAO engine wiring (internal Render network) ─────────────────────────
-      # SAO is a private service pinned to PORT=8000, so the internal URL is
-      # deterministic. Render resolves `eventflow-sao` over the private network.
+      # ── SAO engine wiring ───────────────────────────────────────────────────
+      # SAO runs as a public web service on Render free tier; URL is
+      # deterministic from the service name (https://<name>.onrender.com).
       - key: SAO_ENGINE_URL
-        value: http://eventflow-sao:8000
+        value: https://eventflow-sao.onrender.com
       - key: SAO_ENGINE_SECRET
         fromService:
-          type: pserv
+          type: web
           name: eventflow-sao
           envVarKey: SAO_ENGINE_SECRET
 
