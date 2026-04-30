@@ -1,7 +1,7 @@
 {
-  "buildCommand": "pnpm --filter web-attendee build",
-  "outputDirectory": "apps/web-attendee/dist",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @eventflow/web-attendee build",
+  "outputDirectory": "dist",
+  "installCommand": "echo 'install handled inside buildCommand to access pnpm workspace root'",
   "framework": "vite",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
   "headers": [

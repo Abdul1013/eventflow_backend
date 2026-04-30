@@ -1,6 +1,5 @@
 # EventFlow — Render Blueprint
-# Deploy with: Render Dashboard → "New +" → "Blueprint" → connect repo → apply.
-# Re-applies are idempotent: changing this file and pushing updates the live infra.
+
 
 databases:
   - name: eventflow-postgres
@@ -10,17 +9,15 @@ databases:
     postgresMajorVersion: "16"
 
 services:
-  # ─── Redis (managed Key Value) 
+  #  Redis (managed Key Value) 
   - type: redis
     name: eventflow-redis
     plan: free
     ipAllowList: []           # private — only reachable from services in this blueprint
     maxmemoryPolicy: allkeys-lru
 
-  # ─── SAO Engine (FastAPI) ───────────────────────────────────────────────────
-  # Free tier doesn't allow private services, so SAO is exposed publicly.
-  # Auth is still enforced via SAO_ENGINE_SECRET on every request, so the
-  # public URL only adds a network hop, not a trust boundary.
+  #  SAO Engine (FastAPI) 
+  # SAO is exposed publicly for free plan n
   - type: web
     name: eventflow-sao
     runtime: docker
@@ -34,7 +31,7 @@ services:
       - key: SAO_ENGINE_SECRET
         generateValue: true   # shared with API via fromService below
 
-  # ─── EventFlow API (Express, public) 
+  #  EventFlow API (Express, public) 
   - type: web
     name: eventflow-api
     runtime: docker
@@ -42,8 +39,6 @@ services:
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    # Free tier doesn't support preDeployCommand; the API container runs
-    # `prisma migrate deploy` on startup before launching the server.
     envVars:
       - key: NODE_ENV
         value: production
@@ -61,7 +56,7 @@ services:
           name: eventflow-redis
           property: connectionString
 
-      # ── Secrets (auto-generated; rotate via Render dashboard if leaked) ─────
+# Secrets (auto-generated; rotate via Render dashboard if leaked) 
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -71,9 +66,7 @@ services:
       - key: SEED_ADMIN_PASSWORD
         generateValue: true   # one-time admin password; read from dashboard after first deploy
 
-      # ── SAO engine wiring ───────────────────────────────────────────────────
-      # SAO runs as a public web service on Render free tier; URL is
-      # deterministic from the service name (https://<name>.onrender.com).
+# SAO engine wiring 
       - key: SAO_ENGINE_URL
         value: https://eventflow-sao.onrender.com
       - key: SAO_ENGINE_SECRET
@@ -82,14 +75,11 @@ services:
           name: eventflow-sao
           envVarKey: SAO_ENGINE_SECRET
 
-      # ── Cloudinary (set in dashboard — sync:false skips render.yaml ownership) ─
+# Cloudinary (set in dashboard — sync:false skips render.yaml ownership) ─
       - key: CLOUDINARY_URL
         sync: false
 
-      # ── Frontend / CORS (placeholders; replace once domains exist) ──────────
-      # Render will assign URLs like https://eventflow-api.onrender.com.
-      # Set FRONTEND_URL / ADMIN_URL / CORS_ORIGINS in the dashboard once the
-      # web-admin and web-attendee apps are deployed (e.g. on Vercel).
+# Frontend / CORS (placeholders; replace once domains exist) ─
       - key: FRONTEND_URL
         sync: false
       - key: ADMIN_URL
@@ -101,6 +91,6 @@ services:
       - key: API_URL
         sync: false
 
-      # ── Email (skipped for v1; add RESEND_API_KEY here later to enable) ────
+      # ── Email (skipped for v1; add RESEND_API_KEY here later to enable) ─
       # - key: RESEND_API_KEY
       #   sync: false

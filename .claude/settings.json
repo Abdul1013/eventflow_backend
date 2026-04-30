@@ -3,7 +3,8 @@
     "allow": [
       "Bash(pnpm --filter @eventflow/mobile add react-native-reanimated@~3.16.7)",
       "Bash(pnpm --filter @eventflow/mobile add expo-sqlite@~16.0.10)",
-      "Bash(pnpm --filter @eventflow/mobile add @gorhom/bottom-sheet@^5.0.0)"
+      "Bash(pnpm --filter @eventflow/mobile add @gorhom/bottom-sheet@^5.0.0)",
+      "Bash(npx -p typescript@5.6.3 tsc --noEmit)"
     ]
   }
 }

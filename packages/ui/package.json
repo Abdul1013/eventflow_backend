@@ -20,6 +20,7 @@
     "typescript": "^5.6.0"
   },
   "dependencies": {
+    "@eventflow/types": "workspace:*",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.4"
   }
