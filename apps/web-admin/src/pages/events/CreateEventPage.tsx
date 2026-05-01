@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Upload, X, Calendar } from 'lucide-react';
 import { StepIndicator } from '@eventflow/ui';
+import type { Control, UseFormRegister, FieldValues } from 'react-hook-form';
 import {
   EventFormFields,
   eventFormSchema,
@@ -158,12 +159,22 @@ export default function CreateEventPage() {
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         {/* ── Step 0: Basic info ── */}
         {step === 0 && (
-          <EventFormFields step={1} control={control} register={register} errors={errors} />
+          <EventFormFields
+            step={1}
+            control={control as unknown as Control<FieldValues>}
+            register={register as unknown as UseFormRegister<FieldValues>}
+            errors={errors}
+          />
         )}
 
         {/* ── Step 1: Ticket types ── */}
         {step === 1 && (
-          <EventFormFields step={2} control={control} register={register} errors={errors} />
+          <EventFormFields
+            step={2}
+            control={control as unknown as Control<FieldValues>}
+            register={register as unknown as UseFormRegister<FieldValues>}
+            errors={errors}
+          />
         )}
 
         {/* ── Step 2: Banner + review ── */}

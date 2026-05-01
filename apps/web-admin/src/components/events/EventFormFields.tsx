@@ -57,7 +57,7 @@ export function EventFormFields({ step, control, register, errors }: EventFormFi
   });
 
   const { fields, append, remove } = useFieldArray({
-    control: control as Control<EventFormData>,
+    control: control as unknown as Control<EventFormData>,
     name: 'ticketTypes',
   });
 
@@ -154,9 +154,9 @@ export function EventFormFields({ step, control, register, errors }: EventFormFi
                 placeholder="e.g. General Admission"
                 className={inputCls}
               />
-              {(errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.name && (
+              {(errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.name && (
                 <p className={errCls}>
-                  {String((errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)[idx]?.name?.message)}
+                  {String((errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)[idx]?.name?.message)}
                 </p>
               )}
             </div>
@@ -169,9 +169,9 @@ export function EventFormFields({ step, control, register, errors }: EventFormFi
                 placeholder="0"
                 className={inputCls}
               />
-              {(errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.price && (
+              {(errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.price && (
                 <p className={errCls}>
-                  {String((errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)[idx]?.price?.message)}
+                  {String((errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)[idx]?.price?.message)}
                 </p>
               )}
             </div>
@@ -187,9 +187,9 @@ export function EventFormFields({ step, control, register, errors }: EventFormFi
                 placeholder="100"
                 className={inputCls}
               />
-              {(errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.quantityTotal && (
+              {(errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)?.[idx]?.quantityTotal && (
                 <p className={errCls}>
-                  {String((errors.ticketTypes as FieldErrors<EventFormData['ticketTypes']>)[idx]?.quantityTotal?.message)}
+                  {String((errors.ticketTypes as unknown as FieldErrors<EventFormData['ticketTypes']>)[idx]?.quantityTotal?.message)}
                 </p>
               )}
             </div>

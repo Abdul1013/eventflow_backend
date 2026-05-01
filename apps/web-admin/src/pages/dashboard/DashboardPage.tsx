@@ -27,7 +27,7 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-const STATUS_BADGE: Record<EventRow['status'], string> = {
+const STATUS_BADGE: Record<AdminEventListItem['status'], string> = {
   DRAFT:     'bg-gray-100 text-gray-600',
   PUBLISHED: 'bg-indigo-100 text-indigo-600',
   ONGOING:   'bg-emerald-100 text-emerald-600',

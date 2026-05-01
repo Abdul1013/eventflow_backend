@@ -87,8 +87,8 @@ export default function CreateVenuePage() {
 
   const apiError =
     submitError && 'response' in (submitError as object)
-      ? (submitError as { response: { data: { error: { message: string } } } }).response.data.error
-          .message
+      ? (submitError as unknown as { response: { data: { error: { message: string } } } })
+          .response.data.error.message
       : null;
 
   return (
