@@ -28,7 +28,8 @@ services:
     envVars:
       - key: ALLOWED_ORIGINS
         value: ""             # SAO is called server-to-server; no browser CORS needed
-      - key: SAO_ENGINE_SECRET
+      # SAO Python reads os.getenv("API_SECRET"); name must match exactly.
+      - key: API_SECRET
         generateValue: true   # shared with API via fromService below
 
   #  EventFlow API (Express, public) 
@@ -73,7 +74,7 @@ services:
         fromService:
           type: web
           name: eventflow-sao
-          envVarKey: SAO_ENGINE_SECRET
+          envVarKey: API_SECRET
 
 # Cloudinary (set in dashboard — sync:false skips render.yaml ownership) ─
       - key: CLOUDINARY_URL
