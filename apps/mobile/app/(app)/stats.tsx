@@ -123,8 +123,12 @@ export default function StatsScreen() {
       if (!activeEventId) return;
       if (isManual) {
         setRefreshing(true);
-      } else if (!stats) {
-        setLoading(true);
+      } else {
+        // Use the functional ref to avoid stale-closure issues on `stats`.
+        setStats((prev) => {
+          if (!prev) setLoading(true);
+          return prev;
+        });
       }
 
       try {
@@ -135,14 +139,19 @@ export default function StatsScreen() {
         setError(null);
         // Keep the scanner mini-bar counts in sync
         updateStats(res.data.data.checkedIn, res.data.data.totalTickets);
-      } catch {
-        setError('Could not load stats — pull down to retry.');
+      } catch (err) {
+        const axiosErr = err as { code?: string; message?: string };
+        if (axiosErr.code === 'ECONNABORTED') {
+          setError('Stats request timed out — pull down to retry.');
+        } else {
+          setError('Could not load stats — pull down to retry.');
+        }
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    // updateStats is stable (Zustand action); activeEventId/stats are correct deps
+    // updateStats is stable (Zustand action); activeEventId is the only changing input
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [activeEventId],
   );

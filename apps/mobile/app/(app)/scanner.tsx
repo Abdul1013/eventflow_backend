@@ -109,8 +109,11 @@ export default function ScannerScreen() {
     setEventsLoading(true);
     setModalVisible(true);
     try {
-      const res = await api.get<{ data: EventItem[] }>('/events?status=ONGOING');
-      setEvents(res.data.data ?? []);
+      // API returns a paginated envelope: { data: { events, total, page, limit } }
+      const res = await api.get<{ data: { events: EventItem[] } }>(
+        '/events?status=ONGOING&limit=50',
+      );
+      setEvents(res.data.data?.events ?? []);
     } catch {
       setEvents([]);
     } finally {

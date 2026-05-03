@@ -14,8 +14,10 @@ import {
 
 export const listEvents: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = listEventsQuerySchema.parse(req.query);
-  const isAdmin = req.user?.role === 'ADMIN';
-  const result = await eventsService.listEvents(query, isAdmin);
+  // ADMIN and STAFF can filter by status (e.g. ONGOING for the staff scanner);
+  // attendees are restricted to PUBLISHED events.
+  const isPrivileged = req.user?.role === 'ADMIN' || req.user?.role === 'STAFF';
+  const result = await eventsService.listEvents(query, isPrivileged);
   sendSuccess(res, result, 200, { page: result.page, total: result.total, limit: result.limit });
 });
 

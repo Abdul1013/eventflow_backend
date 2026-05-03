@@ -26,6 +26,9 @@ export const api = axios.create({
   // baseURL: process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000/api/v1',
   baseURL: process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'https://eventflow-api-n9a7.onrender.com/api/v1',
   withCredentials: true,
+  // Render free tier can take ~30 s on cold start; cap requests so the UI
+  // surfaces a real error instead of spinning forever when the socket stalls.
+  timeout: 30_000,
 });
 
 //  Request interceptor — inject Bearer token

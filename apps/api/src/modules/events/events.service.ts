@@ -17,11 +17,12 @@ const TRANSITIONS: Record<EventStatus, EventStatus[]> = {
 
 // ─── Queries 
 
-export const listEvents = async (query: ListEventsQuery, isAdmin = false) => {
+export const listEvents = async (query: ListEventsQuery, isPrivileged = false) => {
   const { page, limit, search, status, sort, venueId } = query;
   const skip = (page - 1) * limit;
 
-  const effectiveStatus: EventStatus | undefined = isAdmin ? status : 'PUBLISHED';
+  // Privileged callers (ADMIN/STAFF) can filter freely; attendees only see PUBLISHED.
+  const effectiveStatus: EventStatus | undefined = isPrivileged ? status : 'PUBLISHED';
 
   const where: Prisma.EventWhereInput = {
     deletedAt: null,
