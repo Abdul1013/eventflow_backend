@@ -68,6 +68,21 @@ def cluster_attendees(
     n_clusters = max(1, min(n, len(seats) // max(1, max_cluster_size)))
     n_clusters = min(n_clusters, n)
 
+    # Short-circuit: skip sklearn when clustering is trivial.
+    # AgglomerativeClustering requires >= 2 samples, and KMeans/Agglomerative
+    # produce no useful labels when n_clusters == 1 anyway. Either way, the
+    # answer is "one cluster containing everyone".
+    if n < 2 or n_clusters <= 1:
+        needs_acc = any(a.needs_accessible for a in attendees)
+        return [
+            AttendeeCluster(
+                cluster_id=0,
+                attendees=list(attendees),
+                needs_accessible=needs_acc,
+                priority=10 if needs_acc else 0,
+            )
+        ]
+
     X = build_feature_matrix(attendees)
 
     if n >= 50:

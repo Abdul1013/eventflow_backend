@@ -111,7 +111,6 @@ export default function StatsScreen() {
   const { activeEventId, activeEventTitle, updateStats } = useScannerStore();
 
   const [stats, setStats] = useState<CheckInStats | null>(null);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prevEventIdRef = useRef(activeEventId);
@@ -121,15 +120,10 @@ export default function StatsScreen() {
   const fetchStats = useCallback(
     async (isManual = false) => {
       if (!activeEventId) return;
-      if (isManual) {
-        setRefreshing(true);
-      } else {
-        // Use the functional ref to avoid stale-closure issues on `stats`.
-        setStats((prev) => {
-          if (!prev) setLoading(true);
-          return prev;
-        });
-      }
+      // RefreshControl handles its own indicator on pull-down. For non-manual
+      // (auto-poll, focus, network event) we keep the current dashboard on
+      // screen; no full-screen blocker.
+      if (isManual) setRefreshing(true);
 
       try {
         const res = await api.get<{ data: CheckInStats }>(
@@ -147,7 +141,6 @@ export default function StatsScreen() {
           setError('Could not load stats — pull down to retry.');
         }
       } finally {
-        setLoading(false);
         setRefreshing(false);
       }
     },
@@ -208,14 +201,17 @@ export default function StatsScreen() {
     );
   }
 
-  // ── Initial loading 
-  if (loading && !stats) {
-    return (
-      <View style={[styles.emptyRoot, { paddingTop: insets.top }]}>
-        <Text style={styles.emptySub}>Loading stats…</Text>
-      </View>
-    );
-  }
+  // ── Render the dashboard always (zeros while initial fetch is in flight) ──
+  // No full-screen "Loading…" blocker — empty events should look like the
+  // dashboard with zeros, and pull-to-refresh handles the refresh indicator.
+  const displayStats: CheckInStats = stats ?? {
+    totalTickets: 0,
+    checkedIn:    0,
+    remaining:    0,
+    checkInRate:  0,
+    errorCount:   0,
+    recentScans:  [],
+  };
 
   // ── Main content 
   return (
@@ -247,68 +243,66 @@ export default function StatsScreen() {
         </View>
       )}
 
-      {stats && (
-        <>
-          {/* ── Progress ring */}
-          <View style={styles.ringSection}>
-            <CircularProgress percent={stats.checkInRate} />
-          </View>
+      {/* ── Progress ring */}
+      <View style={styles.ringSection}>
+        <CircularProgress percent={displayStats.checkInRate} />
+      </View>
 
-          {/* ── Stat cards */}
-          <View style={styles.cardRow}>
-            <StatCard
-              label="Checked In"
-              value={stats.checkedIn}
-              accent="#059669"
-              bg="#ecfdf5"
-            />
-            <StatCard
-              label="Remaining"
-              value={stats.remaining}
-              accent="#4f46e5"
-              bg="#eef2ff"
-            />
-            <StatCard
-              label="Errors"
-              value={stats.errorCount}
-              accent="#dc2626"
-              bg="#fef2f2"
-            />
-          </View>
+      {/* ── Stat cards */}
+      <View style={styles.cardRow}>
+        <StatCard
+          label="Checked In"
+          value={displayStats.checkedIn}
+          accent="#059669"
+          bg="#ecfdf5"
+        />
+        <StatCard
+          label="Remaining"
+          value={displayStats.remaining}
+          accent="#4f46e5"
+          bg="#eef2ff"
+        />
+        <StatCard
+          label="Errors"
+          value={displayStats.errorCount}
+          accent="#dc2626"
+          bg="#fef2f2"
+        />
+      </View>
 
-          {/*  Recent scans */}
-          <Text style={styles.sectionTitle}>Recent Scans</Text>
+      {/*  Recent scans */}
+      <Text style={styles.sectionTitle}>Recent Scans</Text>
 
-          {stats.recentScans.length === 0 ? (
-            <View style={styles.noScans}>
-              <Text style={styles.noScansText}>No scans recorded yet</Text>
+      {displayStats.recentScans.length === 0 ? (
+        <View style={styles.noScans}>
+          <Text style={styles.noScansText}>
+            {stats ? 'No scans recorded yet' : 'Pull down to load stats'}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.scanList}>
+          {displayStats.recentScans.map((scan, index) => (
+            <View
+              key={scan.id}
+              style={[
+                styles.scanRow,
+                index === displayStats.recentScans.length - 1 && styles.scanRowLast,
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scanName} numberOfLines={1}>
+                  {scan.attendeeName}
+                </Text>
+                <Text style={styles.scanTime}>{formatRelativeTime(scan.scannedAt)}</Text>
+              </View>
+              <View style={[styles.badge, { backgroundColor: resultBg(scan.result) }]}>
+                <Text style={[styles.badgeText, { color: resultColor(scan.result) }]}>
+                  {resultLabel(scan.result)}
+                </Text>
+              </View>
             </View>
-          ) : (
-            <View style={styles.scanList}>
-              {stats.recentScans.map((scan, index) => (
-                <View
-                  key={scan.id}
-                  style={[
-                    styles.scanRow,
-                    index === stats.recentScans.length - 1 && styles.scanRowLast,
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.scanName} numberOfLines={1}>
-                      {scan.attendeeName}
-                    </Text>
-                    <Text style={styles.scanTime}>{formatRelativeTime(scan.scannedAt)}</Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: resultBg(scan.result) }]}>
-                    <Text style={[styles.badgeText, { color: resultColor(scan.result) }]}>
-                      {resultLabel(scan.result)}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </>
+          ))}
+        </View>
       )}
     </ScrollView>
   );
