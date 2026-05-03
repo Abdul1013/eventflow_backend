@@ -1,4 +1,5 @@
 import { env } from '../config/env.js';
+import { logger } from './logger.js';
 
 // ─── Key-case transformers ────────────────────────────────────────────────────
 
@@ -27,24 +28,52 @@ function transformKeys<T>(obj: unknown, fn: (k: string) => string): T {
 
 // ─── HTTP helper ──────────────────────────────────────────────────────────────
 
-async function saoPost<TOut>(path: string, body: unknown): Promise<TOut> {
-  const response = await fetch(`${env.SAO_ENGINE_URL}/api/v1${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Api-Secret': env.SAO_ENGINE_SECRET,
-    },
-    body: JSON.stringify(transformKeys(body, toSnake)),
-    signal: AbortSignal.timeout(30_000),
-  });
+// Render free-tier services hibernate after ~15 min idle. The first request
+// to a sleeping service hits the edge with 502/503 while the container spins
+// up. Retry with backoff so admins don't see cold-start failures.
+const COLD_START_STATUSES = new Set([502, 503, 504]);
+const RETRY_DELAYS_MS = [3_000, 8_000, 15_000];
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`SAO Engine error ${response.status}: ${text}`);
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+async function saoPost<TOut>(path: string, body: unknown): Promise<TOut> {
+  const url = `${env.SAO_ENGINE_URL}/api/v1${path}`;
+  const payload = JSON.stringify(transformKeys(body, toSnake));
+
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Secret': env.SAO_ENGINE_SECRET,
+      },
+      body: payload,
+      signal: AbortSignal.timeout(45_000),
+    });
+
+    if (response.ok) {
+      const json: unknown = await response.json();
+      return transformKeys<TOut>(json, toCamel);
+    }
+
+    const isColdStart = COLD_START_STATUSES.has(response.status);
+    const canRetry = isColdStart && attempt < RETRY_DELAYS_MS.length;
+
+    if (!canRetry) {
+      const text = await response.text();
+      throw new Error(`SAO Engine error ${response.status}: ${text}`);
+    }
+
+    const delay = RETRY_DELAYS_MS[attempt]!;
+    logger.warn(
+      { status: response.status, attempt: attempt + 1, delayMs: delay, path },
+      'SAO cold-start; retrying',
+    );
+    await sleep(delay);
   }
 
-  const json: unknown = await response.json();
-  return transformKeys<TOut>(json, toCamel);
+  // Unreachable — the loop returns or throws
+  throw new Error('SAO Engine: exhausted retries');
 }
 
 // ─── Public types ─────────────────────────────────────────────────────────────
