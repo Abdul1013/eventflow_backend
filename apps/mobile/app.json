@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#4F46E5"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.eventflow.staff"
@@ -23,7 +25,11 @@
       },
       "package": "com.eventflow.staff"
     },
-    "plugins": ["expo-router", "expo-camera"],
-    "scheme": "eventflow"
+    "plugins": [
+      "expo-router",
+      "expo-camera"
+    ],
+    "scheme": "eventflow",
+    "owner": "abdulthedev"
   }
 }

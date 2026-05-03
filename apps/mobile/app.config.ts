@@ -8,11 +8,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'light',
+
   splash: {
     image: './assets/splash.png',
     resizeMode: 'contain',
     backgroundColor: '#4F46E5',
   },
+
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
@@ -21,19 +23,31 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     package: 'com.eventflow.staff',
     versionCode: 1,
   },
+
   ios: {
     bundleIdentifier: 'com.eventflow.staff',
     buildNumber: '1',
   },
+
   plugins: [
     'expo-router',
     'expo-secure-store',
     'expo-sqlite',
-    ['expo-camera', { cameraPermission: 'EventFlow needs camera access to scan QR codes at events.' }],
+    [
+      'expo-camera',
+      {
+        cameraPermission:
+          'EventFlow needs camera access to scan QR codes at events.',
+      },
+    ],
   ],
+
   extra: {
-    apiBaseUrl: process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1',
-    eas: { projectId: process.env.EAS_PROJECT_ID ?? '' },
+    apiBaseUrl:
+      process.env.API_BASE_URL ?? 'http://localhost:3001/api/v1',
+
+    eas: {
+      projectId: 'd694aa5e-7622-49d8-89fc-931c5386a61b',
+    },
   },
-  owner: 'eventflow',
 });
