@@ -34,13 +34,31 @@ export default function LoginScreen() {
       const res = await api.post<{
         data: { tokens: { accessToken: string }; user: AuthUser };
       }>('/auth/login', data);
-      setAuth({
-        user: res.data.data.user,
-        accessToken: res.data.data.tokens.accessToken,
-      });
+
+      const { user, tokens } = res.data.data;
+
+      // Staff scanner is gated to ADMIN/STAFF — attendees are rejected here,
+      // not by the API, so we don't leak role info via differential errors.
+      if (user.role !== 'ADMIN' && user.role !== 'STAFF') {
+        setServerError('This app is for staff only. Please use the attendee app to manage your tickets.');
+        return;
+      }
+
+      setAuth({ user, accessToken: tokens.accessToken });
       router.replace('/(app)/scanner');
-    } catch {
-      setServerError('Invalid email or password. Please try again.');
+    } catch (err) {
+      // Distinguish network errors from auth failures so users know whether to
+      // check their connection or their credentials.
+      const axiosErr = err as { response?: { status?: number }; code?: string; message?: string };
+      if (!axiosErr.response) {
+        setServerError(
+          "Can't reach the server. Check your internet connection and try again.",
+        );
+      } else if (axiosErr.response.status === 401) {
+        setServerError('Invalid email or password. Please try again.');
+      } else {
+        setServerError('Sign in failed. Please try again in a moment.');
+      }
     }
   };
 

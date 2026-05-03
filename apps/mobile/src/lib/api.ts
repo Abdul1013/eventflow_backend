@@ -3,14 +3,14 @@ import { router } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import type { AuthUser } from '@eventflow/types';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+//  Types 
 
 interface QueuedRequest {
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
 }
 
-// ─── Refresh state ────────────────────────────────────────────────────────────
+//  Refresh state 
 
 let isRefreshing = false;
 let waitQueue: QueuedRequest[] = [];
@@ -20,14 +20,15 @@ const drainQueue = (token: string | null, err?: unknown): void => {
   waitQueue = [];
 };
 
-// ─── Axios instance ───────────────────────────────────────────────────────────
+//  Axios instance
 
 export const api = axios.create({
-  baseURL: process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000/api/v1',
+  // baseURL: process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000/api/v1',
+  baseURL: process.env['EXPO_PUBLIC_API_BASE_URL'] ?? 'https://eventflow-api-n9a7.onrender.com/api/v1',
   withCredentials: true,
 });
 
-// ─── Request interceptor — inject Bearer token ────────────────────────────────
+//  Request interceptor — inject Bearer token
 
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
@@ -37,7 +38,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Response interceptor — refresh on 401, retry once ───────────────────────
+//  Response interceptor — refresh on 401, retry once 
 
 type AxiosConfigWithRetry = (typeof api.defaults) & { _retry?: boolean };
 
