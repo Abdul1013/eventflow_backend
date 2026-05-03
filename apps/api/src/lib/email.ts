@@ -13,7 +13,7 @@ const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 // In production, replace with a verified sender from your Resend dashboard.
 const FROM =
   env.NODE_ENV === 'production'
-    ? 'EventFlow <tickets@eventflow.app>'
+    ? 'EventFlow <tickets@eventflowng.store>'
     : 'EventFlow <onboarding@resend.dev>';
 
 /** Wraps resend.emails.send — never throws; logs on failure instead. */

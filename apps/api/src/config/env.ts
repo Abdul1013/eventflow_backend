@@ -16,7 +16,7 @@ export const envSchema = z.object({
 
   // Optional — email sending is silently skipped when unset (useful in test/CI environments)
   RESEND_API_KEY: z.string().min(10).optional(),
-  RESEND_FROM_EMAIL: z.string().email().default('tickets@eventflow.app'),
+  RESEND_FROM_EMAIL: z.string().email().default('tickets@eventflowng.store'),
   CLOUDINARY_URL: z.string().url().optional(),
 
   FRONTEND_URL: z.string().url(),
