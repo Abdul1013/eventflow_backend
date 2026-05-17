@@ -21,8 +21,14 @@ export const listEvents = async (query: ListEventsQuery, isPrivileged = false) =
   const { page, limit, search, status, sort, venueId } = query;
   const skip = (page - 1) * limit;
 
-  // Privileged callers (ADMIN/STAFF) can filter freely; attendees only see PUBLISHED.
-  const effectiveStatus: EventStatus | undefined = isPrivileged ? status : 'PUBLISHED';
+  // PUBLISHED and ONGOING are public statuses — visible without authentication.
+  // DRAFT, ENDED, and CANCELLED require staff/admin privileges to filter by.
+  const publicStatuses = new Set<EventStatus>(['PUBLISHED', 'ONGOING']);
+  const effectiveStatus: EventStatus | undefined = isPrivileged
+    ? status
+    : status && publicStatuses.has(status)
+    ? status
+    : 'PUBLISHED';
 
   const where: Prisma.EventWhereInput = {
     deletedAt: null,
