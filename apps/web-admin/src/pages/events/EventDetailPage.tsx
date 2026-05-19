@@ -20,6 +20,7 @@ import { StatusBadge } from '@eventflow/ui';
 import { SeatMapTab } from '@/components/events/SeatMapTab';
 import { LiveCheckinTab } from '@/components/events/LiveCheckinTab';
 import { AnalyticsTab } from '@/components/events/AnalyticsTab';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { api } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -65,10 +66,32 @@ const STATUS_COLORS: Record<string, string> = {
 
 // ─── Status action config ─────────────────────────────────────────────────────
 
-const STATUS_ACTIONS: Partial<Record<string, { label: string; nextStatus: string; danger?: boolean }>> = {
-  DRAFT: { label: 'Publish Event', nextStatus: 'PUBLISHED' },
-  PUBLISHED: { label: 'Cancel Event', nextStatus: 'CANCELLED', danger: true },
-  ONGOING: { label: 'Cancel Event', nextStatus: 'CANCELLED', danger: true },
+interface StatusAction {
+  label: string;
+  nextStatus: string;
+  variant: 'primary' | 'success' | 'warning' | 'danger';
+  requireConfirm?: boolean;
+}
+
+const STATUS_ACTIONS: Partial<Record<string, StatusAction[]>> = {
+  DRAFT: [
+    { label: 'Publish Event', nextStatus: 'PUBLISHED', variant: 'primary' },
+  ],
+  PUBLISHED: [
+    { label: 'Go Live',       nextStatus: 'ONGOING',   variant: 'success', requireConfirm: true },
+    { label: 'Cancel Event',  nextStatus: 'CANCELLED', variant: 'danger',  requireConfirm: true },
+  ],
+  ONGOING: [
+    { label: 'End Event',     nextStatus: 'ENDED',     variant: 'warning', requireConfirm: true },
+    { label: 'Cancel Event',  nextStatus: 'CANCELLED', variant: 'danger',  requireConfirm: true },
+  ],
+};
+
+const VARIANT_CLASSES: Record<string, string> = {
+  primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
+  success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  warning: 'bg-amber-500 text-white hover:bg-amber-600',
+  danger:  'bg-red-600   text-white hover:bg-red-700',
 };
 
 // ─── Tabs config ──────────────────────────────────────────────────────────────
@@ -90,6 +113,7 @@ export default function EventDetailPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [attendeePage, setAttendeePage] = useState(1);
+  const [confirmAction, setConfirmAction] = useState<StatusAction | null>(null);
 
   const {
     data: event, isLoading, isError,
@@ -114,6 +138,7 @@ export default function EventDetailPage() {
   const { mutate: changeStatus, isPending: isChangingStatus } = useMutation({
     mutationFn: (status: string) => api.patch(`/events/${id!}/status`, { status }),
     onSuccess: () => {
+      setConfirmAction(null);
       void queryClient.invalidateQueries({ queryKey: ['event', id] });
       void queryClient.invalidateQueries({ queryKey: ['admin-events'] });
     },
@@ -140,7 +165,7 @@ export default function EventDetailPage() {
     );
   }
 
-  const action = STATUS_ACTIONS[event.status];
+  const actions = STATUS_ACTIONS[event.status];
   const totalSold = event.ticketTypes.reduce((s, tt) => s + tt.quantitySold, 0);
   const totalCapacity = event.ticketTypes.reduce((s, tt) => s + tt.quantityTotal, 0);
   const attendeeTotal = attendeeData?.meta?.total ?? 0;
@@ -186,19 +211,24 @@ export default function EventDetailPage() {
               Edit
             </Link>
           )}
-          {action && (
+          {actions?.map((action) => (
             <button
+              key={action.nextStatus}
               disabled={isChangingStatus}
-              onClick={() => changeStatus(action.nextStatus)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition-colors ${
-                action.danger
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
+              onClick={() => {
+                if (action.requireConfirm) {
+                  setConfirmAction(action);
+                } else {
+                  changeStatus(action.nextStatus);
+                }
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-60 transition-colors ${VARIANT_CLASSES[action.variant]}`}
             >
-              {isChangingStatus ? 'Updating…' : action.label}
+              {isChangingStatus && confirmAction?.nextStatus === action.nextStatus
+                ? 'Updating…'
+                : action.label}
             </button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -402,6 +432,17 @@ export default function EventDetailPage() {
       {activeTab === 'checkin' && (
         <LiveCheckinTab eventId={event.id} />
       )}
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => { if (!open) setConfirmAction(null); }}
+        title={confirmAction?.label ?? ''}
+        description={`Are you sure you want to ${confirmAction?.label.toLowerCase()} "${event.title}"? This action cannot be undone.`}
+        confirmLabel={confirmAction?.label ?? ''}
+        danger={confirmAction?.variant === 'danger'}
+        isPending={isChangingStatus}
+        onConfirm={() => { if (confirmAction) changeStatus(confirmAction.nextStatus); }}
+      />
     </div>
   );
 }

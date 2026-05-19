@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Eye, Pencil, Trash2, CalendarOff } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, Trash2, CalendarOff, Play, StopCircle, XCircle } from 'lucide-react';
 import * as Select from '@radix-ui/react-select';
 import type { AdminEventListItem } from '@eventflow/types';
 import { StatusBadge } from '@eventflow/ui';
@@ -42,6 +42,7 @@ export default function EventListPage() {
   const [sort, setSort] = useState('startsAt');
   const [toast, setToast] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [statusTarget, setStatusTarget] = useState<{ id: string; title: string; nextStatus: string; label: string; danger?: boolean } | null>(null);
 
   const debouncedSearch = useDebounce(search, 400);
 
@@ -68,6 +69,23 @@ export default function EventListPage() {
       showToast('Event deleted successfully');
     },
   });
+
+  const { mutate: changeStatus, isPending: isChangingStatus } = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.patch(`/events/${id}/status`, { status }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-events'] });
+      setStatusTarget(null);
+      showToast('Event status updated');
+    },
+  });
+
+  // Primary forward transition for each status (shown as an inline button)
+  const STATUS_ADVANCE: Partial<Record<string, { nextStatus: string; label: string; Icon: React.ElementType; danger?: boolean }>> = {
+    DRAFT:     { nextStatus: 'PUBLISHED', label: 'Publish',    Icon: Play },
+    PUBLISHED: { nextStatus: 'ONGOING',   label: 'Go Live',    Icon: Play },
+    ONGOING:   { nextStatus: 'ENDED',     label: 'End Event',  Icon: StopCircle, danger: true },
+  };
 
   const events = data?.events ?? [];
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1;
@@ -182,6 +200,7 @@ export default function EventListPage() {
               : events.map(ev => {
                 const tickets = sumTickets(ev.ticketTypes);
                 const canDelete = ev.status === 'DRAFT' || ev.status === 'CANCELLED';
+                const advance = STATUS_ADVANCE[ev.status];
                 return (
                   <tr key={ev.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
@@ -214,13 +233,33 @@ export default function EventListPage() {
                         >
                           <Eye size={15} />
                         </button>
-                        <button
-                          onClick={() => navigate(`/events/${ev.id}/edit`)}
-                          className="p-1.5 rounded hover:bg-gray-100 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          title="Edit"
-                        >
-                          <Pencil size={15} />
-                        </button>
+                        {ev.status === 'DRAFT' && (
+                          <button
+                            onClick={() => navigate(`/events/${ev.id}/edit`)}
+                            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            title="Edit"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
+                        {advance && (
+                          <button
+                            onClick={() => setStatusTarget({ id: ev.id, title: ev.title, nextStatus: advance.nextStatus, label: advance.label, danger: advance.danger })}
+                            className={`p-1.5 rounded focus:outline-none focus:ring-2 ${advance.danger ? 'hover:bg-red-50 text-red-500 focus:ring-red-500' : 'hover:bg-emerald-50 text-emerald-600 focus:ring-emerald-500'}`}
+                            title={advance.label}
+                          >
+                            <advance.Icon size={15} />
+                          </button>
+                        )}
+                        {ev.status === 'PUBLISHED' && (
+                          <button
+                            onClick={() => setStatusTarget({ id: ev.id, title: ev.title, nextStatus: 'CANCELLED', label: 'Cancel Event', danger: true })}
+                            className="p-1.5 rounded hover:bg-red-50 text-red-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            title="Cancel Event"
+                          >
+                            <XCircle size={15} />
+                          </button>
+                        )}
                         {canDelete && (
                           <button
                             onClick={() => setDeleteTarget({ id: ev.id, title: ev.title })}
@@ -288,6 +327,17 @@ export default function EventListPage() {
         danger
         isPending={isDeleting}
         onConfirm={() => { if (deleteTarget) deleteEvent(deleteTarget.id); }}
+      />
+
+      <ConfirmDialog
+        open={!!statusTarget}
+        onOpenChange={open => { if (!open) setStatusTarget(null); }}
+        title={statusTarget?.label ?? ''}
+        description={statusTarget ? `Are you sure you want to ${statusTarget.label.toLowerCase()} "${statusTarget.title}"?` : undefined}
+        confirmLabel={statusTarget?.label ?? ''}
+        danger={statusTarget?.danger}
+        isPending={isChangingStatus}
+        onConfirm={() => { if (statusTarget) changeStatus({ id: statusTarget.id, status: statusTarget.nextStatus }); }}
       />
     </div>
   );

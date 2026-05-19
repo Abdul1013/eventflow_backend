@@ -6,7 +6,7 @@ import LoginPage from '@/pages/auth/LoginPage';
 import RegisterPage from '@/pages/auth/RegisterPage';
 import AttendeeShellLayout from '@/layouts/AttendeeShellLayout';
 
-// ─── Lazy-loaded pages ────────────────────────────────────────────────────────
+//  Lazy-loaded pages ────────────────────────────────────────────────────────
 
 const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage  = lazy(() => import('@/pages/auth/ResetPasswordPage'));
@@ -17,13 +17,13 @@ const TicketDetailPage   = lazy(() => import('@/pages/tickets/TicketDetailPage')
 const ProfilePage        = lazy(() => import('@/pages/profile/ProfilePage'));
 const AppNotFoundPage    = lazy(() => import('@/pages/NotFoundPage'));
 
-// ─── Helper: wrap a lazy page in Suspense ────────────────────────────────────
+//  Helper: wrap a lazy page in Suspense 
 
 function page(element: React.ReactNode) {
   return <Suspense fallback={<LoadingSpinner />}>{element}</Suspense>;
 }
 
-// ─── Router ───────────────────────────────────────────────────────────────────
+//  Router 
 
 export const router = createBrowserRouter([
   // Root redirect
