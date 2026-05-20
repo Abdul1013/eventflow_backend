@@ -315,8 +315,14 @@ export const runAllocation = async (eventId: string) => {
 
   const result = await saoClient.run({ eventId, seats, attendees });
 
-  // Persist seat assignments + create Allocation audit record in one transaction
+  // Persist seat assignments + create Allocation audit record in one transaction.
+  // Clear existing seatIds first so the @@unique([eventId, seatId]) constraint
+  // is never temporarily violated when re-running allocation on the same event.
   await prisma.$transaction([
+    prisma.ticket.updateMany({
+      where: { eventId, status: 'ACTIVE', deletedAt: null },
+      data: { seatId: null },
+    }),
     ...result.assignments.map((a) =>
       prisma.ticket.update({
         where: { id: a.ticketId },
