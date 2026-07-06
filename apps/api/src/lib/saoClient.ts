@@ -30,11 +30,30 @@ function transformKeys<T>(obj: unknown, fn: (k: string) => string): T {
 
 // Render free-tier services hibernate after ~15 min idle. The first request
 // to a sleeping service hits the edge with 502/503 while the container spins
-// up. Retry with backoff so admins don't see cold-start failures.
-const COLD_START_STATUSES = new Set([502, 503, 504]);
+// up. Retry with backoff so admins don't see cold-start failures. Also retry on
+// 429 rate-limit responses, honoring Retry-After when provided.
+const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 const RETRY_DELAYS_MS = [3_000, 8_000, 15_000];
+const MAX_RETRY_AFTER_MS = 60_000;
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function parseRetryAfterMs(value: string | null): number | null {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const seconds = Number(trimmed);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1_000, MAX_RETRY_AFTER_MS);
+  }
+
+  const date = Date.parse(trimmed);
+  if (!Number.isNaN(date)) {
+    return Math.min(Math.max(0, date - Date.now()), MAX_RETRY_AFTER_MS);
+  }
+
+  return null;
+}
 
 async function saoPost<TOut>(path: string, body: unknown): Promise<TOut> {
   const url = `${env.SAO_ENGINE_URL}/api/v1${path}`;
@@ -56,18 +75,26 @@ async function saoPost<TOut>(path: string, body: unknown): Promise<TOut> {
       return transformKeys<TOut>(json, toCamel);
     }
 
-    const isColdStart = COLD_START_STATUSES.has(response.status);
-    const canRetry = isColdStart && attempt < RETRY_DELAYS_MS.length;
+    const isRetryable = RETRYABLE_STATUSES.has(response.status);
+    const canRetry = isRetryable && attempt < RETRY_DELAYS_MS.length;
 
     if (!canRetry) {
       const text = await response.text();
       throw new Error(`SAO Engine error ${response.status}: ${text}`);
     }
 
-    const delay = RETRY_DELAYS_MS[attempt]!;
+    const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
+    const delay = retryAfterMs ?? RETRY_DELAYS_MS[attempt]!;
+
     logger.warn(
-      { status: response.status, attempt: attempt + 1, delayMs: delay, path },
-      'SAO cold-start; retrying',
+      {
+        status: response.status,
+        attempt: attempt + 1,
+        delayMs: delay,
+        path,
+        retryAfterMs,
+      },
+      'SAO Engine retryable response; retrying',
     );
     await sleep(delay);
   }
